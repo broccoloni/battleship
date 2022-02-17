@@ -4,7 +4,10 @@ class Ship():
         self.field = field
         self.sunk = False
 
-    def setfield(self,field):
-        self.field = field
+        self.hitlocs = []
 
+    def hit(self,loc):
+        self.hitlocs.append(loc)
+        if len(self.hitlocs) == self.size:
+            self.sunk = True
 
