@@ -1,5 +1,6 @@
 class Ship():
-    def __init__(self,field):
+    def __init__(self,shipid,field):
+        self.shipid = shipid
         self.size = len(field)
         self.field = field
         self.sunk = False

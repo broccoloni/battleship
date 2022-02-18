@@ -2,6 +2,7 @@ import numpy as np
 from square import *
 from ship import *
 from pygame import *
+from button import *
 
 class Board():
     def __init__(self,
@@ -9,17 +10,19 @@ class Board():
             boardheight,
             screenwidth,
             screenheight,
+            shipims,
             separation = 3,
             squarewidth = 25,
             squareheight = 25,
             numships = 5,
             shipcolour = (100,100,100),
             hovercolour = (175,175,0),
-            seacolour = (0,0,255),
+            seacolour = (0,157,196),
             hitcolour = (0,255,0),
             misscolour = (255,0,0),
             sunkcolour = (240,240,240),
-            textcolour = (255,255,255)):
+            textcolour = (255,255,255),
+            sunkshipcolour = (220,100,100)):
 
         #from inputs
         self.boardwidth = boardwidth
@@ -37,6 +40,7 @@ class Board():
         self.misscolour = misscolour
         self.sunkcolour = sunkcolour
         self.textcolour = textcolour
+        self.sunkshipcolour = sunkshipcolour
 
         #internal variables
         self.board = np.zeros((boardheight,boardwidth),dtype = np.int8)
@@ -53,7 +57,19 @@ class Board():
                 posx = self.left + x * (squarewidth+separation)
                 posy = self.top + y * (squareheight+separation)
                 self.squares[y][x].setpos(posx,posy)
-
+        self.buttons = []
+        for im in shipims:
+            self.buttons.append(Button(len(self.buttons),
+                                       screenwidth-self.left+squarewidth,
+                                       self.top+(self.gameheight-5*50)//2+50*len(self.buttons),
+                                       150,
+                                       50,
+                                       im = im,
+                                       buttoncolour = (0,0,0),
+                                       hovercolour = (150,150,170),
+                                       hoverbordercolour = (240,200,240),
+                                       clickedbordercolour = (240,200,240)))
+        self.buttons[0].clicked = True
     def isonboard(self,pos):
         posx,posy = pos
         if posx < self.left:
@@ -135,10 +151,12 @@ class Board():
                 field.append((y-i,x))
         return field
 
-    def placeship(self,field):
+    def placeship(self,shipid,field):
         if self.isfieldonboard(field) and not self.isfieldonship(field) and not self.setupdone:
-            self.ships.append(Ship(field))
+            self.ships.append(Ship(shipid,field))
             self.setcolourhard(field,self.shipcolour)
+            self.buttons[shipid].hovercolour = self.buttons[shipid].clickedcolour
+            self.buttons[shipid].hoverbordercolour = self.buttons[shipid].clickedbordercolour
             for (y,x) in field:
                 self.board[y,x] = len(self.ships)
             
@@ -170,6 +188,7 @@ class Board():
                 #print("Ship ",hit-1, " sunk")
                 self.shipsleft -= 1
                 self.setcolourhard(self.ships[hit-1].field,self.sunkcolour)
+                self.buttons[self.ships[hit-1].shipid].buttoncolour = self.sunkshipcolour
             return self.shipsleft
         elif hit == 0:
             #print("Attacking location:",loc,"... miss :(")
@@ -178,7 +197,7 @@ class Board():
         else:
             return -1
 
-    def render(self,screen,text,font):
+    def render(self,screen,text,font,mousepos):
         screen.fill((0,0,0))
         for x in range(self.boardwidth):
             for y in range(self.boardheight):
@@ -187,6 +206,8 @@ class Board():
         textrect = text.get_rect()
         textrect.center = (self.screenwidth // 2, self.top // 2) 
         screen.blit(text,textrect)
+        for button in self.buttons:
+            button.render(screen,mousepos)
 
     def reset(self):
         self.board = np.zeros((self.boardheight,self.boardwidth),dtype = np.int8)
@@ -196,3 +217,5 @@ class Board():
         for row in self.squares:
             for square in row:
                 square.set_colour_hard(self.seacolour)
+
+
