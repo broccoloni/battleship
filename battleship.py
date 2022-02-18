@@ -162,8 +162,8 @@ while gameOn:
                         gameOn = False
                 elif event.type == QUIT:
                     gameOn = False
-                print("IN PLAYER TRANSITION")
-                pygame.time.wait(5)
+                pygame.time.delay(50)
+                gamestate = -1
                 playerturn = (playerturn+1)%2
 
             elif gamestate > 0: #game over, replay or quit
@@ -186,8 +186,8 @@ while gameOn:
                     gameOn = False
             
                 if len(buttons) == 0:
-                    buttons.append(Button(len(buttons),font,screenwidth//2-180,screenheight//2-30,180,60,text = "Play again"))
-                    buttons.append(Button(len(buttons),font,screenwidth//2,screenheight//2-30,180,60,text = "Quit"))
+                    buttons.append(Button(len(buttons),screenwidth//2-180,screenheight//2-30,180,60,text = "Play again"))
+                    buttons.append(Button(len(buttons),screenwidth//2,screenheight//2-30,180,60,text = "Quit"))
 
                 if clicked:
                     option = -1
@@ -242,20 +242,21 @@ while gameOn:
     
                 if clicked:
                     if board.isfieldonboard([hoverloc]):
-                        shipsleft = board.attack(hoverloc)
-                        if shipsleft > 0:
+                        shipsleft,hit = board.attack(hoverloc)
+                        if hit: #it's a hit
                             displaytext+= " HIT!"
-                            gamestate = 0
+                            if shipsleft > 0:
+                                gamestate = 0
 
-                        elif shipsleft == 0: #game over
-                            gamestate = playerturn+1
-
-                        elif shipsleft == -1:#if they attack where a sunk ship is - do nothing
-                            board.hovership([hoverloc])
+                            elif shipsleft == 0: #game over
+                                gamestate = playerturn+1
 
                         else: #it's a miss
-                            displaytext += " miss :("
-                            gamestate = 0
+                            if shipsleft == -1:#if they attack where a sunk ship is - do nothing
+                                board.hovership([hoverloc])
+                            else: #it's a miss
+                                displaytext += " miss :("
+                                gamestate = 0
 
                 else:
                     board.hovership([hoverloc])

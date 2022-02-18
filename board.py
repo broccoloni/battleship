@@ -192,13 +192,13 @@ class Board():
                 self.shipsleft -= 1
                 self.setcolourhard(self.ships[hit-1].field,self.sunkcolour)
                 self.buttons[self.ships[hit-1].shipid].buttoncolour = self.sunkshipcolour
-            return self.shipsleft
+            return self.shipsleft,True
         elif hit == 0:
             #print("Attacking location:",loc,"... miss :(")
             self.setcolourhard([loc],self.misscolour)
-            return self.shipsleft
+            return self.shipsleft,False
         else:
-            return -1
+            return -1,False
 
     def render(self,screen,text,font,mousepos):
         screen.fill((0,0,0))
