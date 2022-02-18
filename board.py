@@ -95,6 +95,13 @@ class Board():
                     return True
         return False
 
+    def topleftposoffield(self,field,orientation):
+        if orientation == 0 or orientation == 1:
+            y,x = field[0]
+        elif orientation == 2 or orientation == 3:
+            y,x = field[-1]
+        return self.squares[y][x].pos
+
     def isloconboard(self,loc):
         y,x = loc
         if y>=0 and y<self.boardheight and x>=0 and x < self.boardwidth:
@@ -154,7 +161,6 @@ class Board():
     def placeship(self,shipid,field):
         if self.isfieldonboard(field) and not self.isfieldonship(field) and not self.setupdone:
             self.ships.append(Ship(shipid,field))
-            self.setcolourhard(field,self.shipcolour)
             self.buttons[shipid].hovercolour = self.buttons[shipid].clickedcolour
             self.buttons[shipid].hoverbordercolour = self.buttons[shipid].clickedbordercolour
             for (y,x) in field:
@@ -162,9 +168,6 @@ class Board():
             
             if len(self.ships) == self.numships:
                 self.setupdone = True
-                for row in self.squares:
-                    for square in row:
-                        square.set_colour_hard(self.seacolour)
             return True
         else:
             self.cropfield(field)

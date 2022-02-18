@@ -66,6 +66,8 @@ p2board = Board(boardwidth,
         numships=numships)
 boards = [p1board,p2board]
 buttons = []
+imstoblit = []
+curshiptoblit = None
 
 #Game loop
 while gameOn:
@@ -88,8 +90,12 @@ while gameOn:
                     board.buttons[shipids[curship]].clicked = True
                 if event.key == K_RIGHT:
                     orientation = (orientation+1)%4
+                    for i,im in enumerate(shipims):
+                        shipims[i] = pygame.transform.rotate(im,90)
                 if event.key == K_LEFT:
                     orientation = (orientation-1)%4
+                    for i,im in enumerate(shipims):
+                        shipims[i] = pygame.transform.rotate(im,-90)
 
             elif event.type == MOUSEMOTION:
                 mousepos = event.pos
@@ -101,6 +107,8 @@ while gameOn:
                     clicked = True
                 elif event.button == 3: #right click
                     orientation = (orientation+1)%4
+                    for i,im in enumerate(shipims):
+                        shipims[i] = pygame.transform.rotate(im,90)
 
             elif event.type == QUIT:
                 gameOn = False
@@ -109,27 +117,39 @@ while gameOn:
             prevfield = field
             curships = [ships[shipid] for shipid in shipids]
             field = board.makefield(curships[curship],hoverloc,orientation)
+            if board.isfieldonboard(field):
+                shipim = shipims[shipids[curship]]
+                shippos = board.topleftposoffield(field,orientation)
+                curshiptoblit = (shipim,shippos)
+
             if clicked:
-                if board.placeship(shipids[curship],field):
-                    shipid = shipids.pop(curship)
-                    board.buttons[shipid].buttoncolour = (150,150,170)
-                    board.buttons[shipid].clicked = False
-                    if not shipids: #if all ships placed
-                        #gamestate = 0 #player transition
-                        shipids = [0,1,2,3,4]
-                        if playerturn != 0:
-                            setupdone = True
-                        playerturn = (playerturn+1)%2
-                    else:
-                        curship = 0
-                        board.buttons[shipids[curship]].clicked = True
+                if board.isonboard(mousepos):
+                    if board.placeship(shipids[curship],field):
+                        shipid = shipids.pop(curship)
+                        shipim = shipims[shipid]
+                        shippos = board.topleftposoffield(field,orientation)
+                        imstoblit.append((shipim,shippos))
+                        board.buttons[shipid].buttoncolour = (150,150,170)
+                        board.buttons[shipid].clicked = False
+                        curshiptoblit = None
+                        if not shipids: #if all ships placed
+                            #gamestate = 0 #player transition
+                            shipids = [0,1,2,3,4]
+                            if playerturn != 0:
+                                setupdone = True
+                            playerturn = (playerturn+1)%2
+                            imstoblit = []
+                        else:
+                            curship = 0
+                            board.buttons[shipids[curship]].clicked = True
                 else:
+                    board.hovership(field)
                     for button in board.buttons:
                         if button.ison(mousepos):
                             shipid = button.buttonid
                             if shipid in shipids:
                                 board.buttons[shipids[curship]].clicked = False
-                                curship = shipids.index(shipid)
+                                curship = shipids.index(shipid) 
                                 button.clicked = True
             else:
                 board.hovership(field)
@@ -137,15 +157,14 @@ while gameOn:
      
         else: 
             if gamestate == 0: #player transition
+                if event.type == KEYDOWN:
+                    if event.key == K_BACKSPACE or event.key == K_ESCAPE:
+                        gameOn = False
+                elif event.type == QUIT:
+                    gameOn = False
                 print("IN PLAYER TRANSITION")
-                displaytext = "Switching turns in "+str(timeleft)
-                pygame.time.wait(1000)
-                timeleft = (timeleft-1)%countdown
-
-                if timeleft == 0:
-                    playerturn = (playerturn+1)%2
-                    timeleft = deepcopy(countdown)
-                    gamestate = -1
+                pygame.time.wait(5)
+                playerturn = (playerturn+1)%2
 
             elif gamestate > 0: #game over, replay or quit
                 displaytext = "Player "+str(gamestate)+" wins!" 
@@ -201,7 +220,7 @@ while gameOn:
 
             else: #if setup is done and game isn't over, we can begin the game
                 board = boards[playerturn]
-                displaytext = "Player "+str(playerturn+1)+" turn"
+                displaytext = "Player "+str(playerturn+1)+" turn:"
                 if event.type == KEYDOWN:
                     if event.key == K_BACKSPACE or event.key == K_ESCAPE:
                         gameOn = False
@@ -224,14 +243,19 @@ while gameOn:
                 if clicked:
                     if board.isfieldonboard([hoverloc]):
                         shipsleft = board.attack(hoverloc)
-                        #game over
-                        if shipsleft == 0:
+                        if shipsleft > 0:
+                            displaytext+= " HIT!"
+                            gamestate = 0
+
+                        elif shipsleft == 0: #game over
                             gamestate = playerturn+1
 
                         elif shipsleft == -1:#if they attack where a sunk ship is - do nothing
                             board.hovership([hoverloc])
+
                         else: #it's a miss
-                            playerturn = (playerturn+1)%2
+                            displaytext += " miss :("
+                            gamestate = 0
 
                 else:
                     board.hovership([hoverloc])
@@ -241,7 +265,11 @@ while gameOn:
     board.render(screen,displaytext,font,mousepos)
     for button in buttons:
         button.render(screen,mousepos)
-    #clock.tick(60)
+    for im,pos in imstoblit:
+        screen.blit(im,pos)
+    if curshiptoblit is not None:
+        im,pos = curshiptoblit
+        screen.blit(im,pos)
     pygame.display.flip()
 
 
