@@ -11,6 +11,7 @@ class Board():
             screenwidth,
             screenheight,
             shipims,
+            squareims = None,
             separation = 3,
             squarewidth = 25,
             squareheight = 25,
@@ -41,17 +42,21 @@ class Board():
         self.sunkcolour = sunkcolour
         self.textcolour = textcolour
         self.sunkshipcolour = sunkshipcolour
-
+        self.squareims = squareims
+        self.shipims = shipims
         #internal variables
         self.board = np.zeros((boardheight,boardwidth),dtype = np.int8)
         self.ships = []
         self.setupdone = False
         self.shipsleft = self.numships
+        self.sunkshipids = []
+        self.shippos = [(0,0) for i in range(numships)]
+        self.shipfields = [(0,0) for i in range(numships)]
         self.gamewidth = boardwidth * squarewidth + (boardwidth-1)*separation
         self.gameheight = boardheight * squareheight + (boardheight-1)*separation
         self.left = (screenwidth - self.gamewidth)//2
         self.top = (screenheight - self.gameheight)//2
-        self.squares = [[Square(squarewidth,squareheight,seacolour) for i in range(boardwidth)] for j in range(boardheight)]
+        self.squares = [[Square(squarewidth,squareheight,seacolour,ims = squareims) for i in range(boardwidth)] for j in range(boardheight)]
         for x in range(boardwidth):
             for y in range(boardheight):
                 posx = self.left + x * (squarewidth+separation)
@@ -158,11 +163,13 @@ class Board():
                 field.append((y-i,x))
         return field
 
-    def placeship(self,shipid,field):
+    def placeship(self,shipid,field,orientation):
         if self.isfieldonboard(field) and not self.isfieldonship(field) and not self.setupdone:
             self.ships.append(Ship(shipid,field))
             self.buttons[shipid].hovercolour = self.buttons[shipid].clickedcolour
             self.buttons[shipid].hoverbordercolour = self.buttons[shipid].clickedbordercolour
+            self.shippos[shipid] = self.topleftposoffield(field,orientation)
+            self.shipfields[shipid] = field
             for (y,x) in field:
                 self.board[y,x] = len(self.ships)
             
@@ -183,19 +190,25 @@ class Board():
         y,x = loc
         hit = int(self.boardval(loc))
         self.board[y,x] = -1
-        if hit > 0:
-            #print("Attacking location:",loc,"... HIT!")
+        if hit > 0: #hit ship
             self.ships[hit-1].hit(loc)
             self.setcolourhard([loc],self.hitcolour)
-            if self.ships[hit-1].sunk:
-                #print("Ship ",hit-1, " sunk")
+            if self.ships[hit-1].sunk: #ship sunk
                 self.shipsleft -= 1
                 self.setcolourhard(self.ships[hit-1].field,self.sunkcolour)
                 self.buttons[self.ships[hit-1].shipid].buttoncolour = self.sunkshipcolour
+                self.sunkshipids.append(hit-1)
+                for loc in self.shipfields[hit-1]:
+                    y,x = loc
+                    self.squares[y][x].attacked = -1 #stop showing explosion to display ship instead
+            else:
+                if self.squareims is not None:
+                    self.squares[y][x].attacked = 1
             return self.shipsleft,True
-        elif hit == 0:
-            #print("Attacking location:",loc,"... miss :(")
+        elif hit == 0: #miss
             self.setcolourhard([loc],self.misscolour)
+            if self.squareims is not None:
+                self.squares[y][x].attacked = 0
             return self.shipsleft,False
         else:
             return -1,False
@@ -204,13 +217,18 @@ class Board():
         screen.fill((0,0,0))
         for x in range(self.boardwidth):
             for y in range(self.boardheight):
-                screen.blit(self.squares[y][x].surf,self.squares[y][x].pos)
+                self.squares[y][x].render(screen)
         text = font.render(text,True,self.textcolour,(0,0,0))
         textrect = text.get_rect()
         textrect.center = (self.screenwidth // 2, self.top // 2) 
         screen.blit(text,textrect)
         for button in self.buttons:
             button.render(screen,mousepos)
+
+        for shipid in self.sunkshipids:
+            shipim = self.shipims[shipid]
+            shiprect = shipim.get_rect(topleft = self.shippos[shipid])
+            screen.blit(shipim,shiprect)
 
     def reset(self):
         self.board = np.zeros((self.boardheight,self.boardwidth),dtype = np.int8)

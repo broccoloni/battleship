@@ -21,6 +21,15 @@ separation = 3
 screen = pygame.display.set_mode((screenwidth,screenheight))
 font = pygame.font.SysFont("Ubuntu",30)
 pygame.display.set_caption("Battleship")
+
+#images
+waterim = pygame.image.load("images/water.jpg")
+waterim = pygame.transform.scale(waterim,(squarewidth,squareheight))
+hitim = pygame.image.load("images/hit.png")
+hitim = pygame.transform.scale(hitim,(12*squarewidth,squareheight)) #12 because there's twelve side by side ims
+missim = pygame.image.load("images/miss.png")
+missim = pygame.transform.scale(missim,(4*squarewidth,squareheight))
+squareims = [waterim,hitim,missim]
 ship5im = pygame.image.load("images/ship5.png").convert_alpha()
 ship4im = pygame.image.load("images/ship4.png").convert_alpha()
 ship3im1 = pygame.image.load("images/ship3_1.png").convert_alpha()
@@ -33,9 +42,11 @@ for i,im in enumerate(shipims):
     size = ships[i]
     im = pygame.transform.scale(im,(squarewidth,size*squareheight+size-1*separation))
     shipims[i] = pygame.transform.rotate(im,90)
+
 #need to be reset with new game
 playerturn = 0 #0 - p1, 1 - p2
 hoverloc = (-1,-1)
+mousepos = (0,0)
 countdown = 5
 timeleft = deepcopy(countdown)
 clicked = False
@@ -51,6 +62,7 @@ p1board = Board(boardwidth,
         screenwidth,
         screenheight,
         shipims,
+        squareims = squareims,
         squarewidth=squarewidth,
         squareheight=squareheight,
         separation=separation,
@@ -60,6 +72,7 @@ p2board = Board(boardwidth,
         screenwidth,
         screenheight,
         shipims,
+        squareims = squareims,
         squarewidth=squarewidth,
         squareheight=squareheight,
         separation=separation,
@@ -124,7 +137,7 @@ while gameOn:
 
             if clicked:
                 if board.isonboard(mousepos):
-                    if board.placeship(shipids[curship],field):
+                    if board.placeship(shipids[curship],field,orientation):
                         shipid = shipids.pop(curship)
                         shipim = shipims[shipid]
                         shippos = board.topleftposoffield(field,orientation)
@@ -139,6 +152,17 @@ while gameOn:
                                 setupdone = True
                             playerturn = (playerturn+1)%2
                             imstoblit = []
+                            rotation = 0
+                            if orientation == 1:
+                                rotation = -90
+                            elif orientation == 2:
+                                rotation = 180
+                            elif orientation == 3:
+                                rotation = 90
+                            for i,im in enumerate(shipims):
+                                shipims[i] = pygame.transform.rotate(im,rotation)
+                            orientation = 0
+                        
                         else:
                             curship = 0
                             board.buttons[shipids[curship]].clicked = True
@@ -205,7 +229,8 @@ while gameOn:
                         buttons = []
                         playerturn = 0 
                         hoverloc = (-1,-1)
-                        ships = deepcopy(defaultships)
+                        mousepos = (0,0)
+                        ships = [5,4,3,3,2]
                         curship = 0 
                         orientation = 0
                         field = []
@@ -241,7 +266,7 @@ while gameOn:
                 prevfield = [hoverloc]
     
                 if clicked:
-                    if board.isfieldonboard([hoverloc]):
+                    if board.isonboard(mousepos):
                         shipsleft,hit = board.attack(hoverloc)
                         if hit: #it's a hit
                             displaytext+= " HIT!"
