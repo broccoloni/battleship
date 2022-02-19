@@ -61,12 +61,12 @@ class Board():
                 posy = self.top + y * (squareheight+separation)
                 self.squares[y][x].setpos(posx,posy)
         self.buttons = []
-        for im in shipims:
+        for i,im in enumerate(shipims):
             self.buttons.append(Button(len(self.buttons),
                                        screenwidth-self.left+squarewidth,
-                                       self.top+(self.gameheight-5*50)//2+50*len(self.buttons),
-                                       150,
-                                       50,
+                                       self.top+(self.gameheight-10*squareheight)//2+2*squareheight*len(self.buttons),
+                                       squarewidth*6,
+                                       2*squareheight,
                                        im = im,
                                        buttoncolour = (0,0,0),
                                        hovercolour = (150,150,170),

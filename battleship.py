@@ -13,13 +13,13 @@ numships = 5
 ships = [5,4,3,3,2]
 boardwidth = 10
 boardheight = 10
-screenwidth = 800
-screenheight = 600
-squarewidth = 25
-squareheight = 25
+screenwidth = 1600
+screenheight = 900
+squarewidth = screenwidth//80*3
+squareheight = squarewidth
 separation = 3
 screen = pygame.display.set_mode((screenwidth,screenheight))
-font = pygame.font.SysFont("Ubuntu",30)
+font = pygame.font.SysFont("Ubuntu",squarewidth)
 pygame.display.set_caption("Battleship")
 
 #images
@@ -210,8 +210,21 @@ while gameOn:
                     gameOn = False
             
                 if len(buttons) == 0:
-                    buttons.append(Button(len(buttons),screenwidth//2-180,screenheight//2-30,180,60,text = "Play again"))
-                    buttons.append(Button(len(buttons),screenwidth//2,screenheight//2-30,180,60,text = "Quit"))
+                    bwidth = screenwidth//5
+                    bheight = screenheight//10
+                    buttons.append(Button(len(buttons),
+                                   screenwidth//2-bwidth,
+                                   (screenheight-bheight)//2,
+                                   bwidth,bheight,
+                                   text = "Play again",
+                                   font = font))
+                    buttons.append(Button(len(buttons),
+                                          screenwidth//2,
+                                          (screenheight-bheight)//2,
+                                          bwidth,
+                                          bheight,
+                                          text = "Quit",
+                                          font = font))
 
                 if clicked:
                     option = -1
