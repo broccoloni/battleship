@@ -44,14 +44,12 @@ class Board():
         self.sunkshipcolour = sunkshipcolour
         self.squareims = squareims
         self.shipims = shipims
+        
         #internal variables
         self.board = np.zeros((boardheight,boardwidth),dtype = np.int8)
         self.ships = []
         self.setupdone = False
         self.shipsleft = self.numships
-        self.sunkshipids = []
-        self.shippos = [(0,0) for i in range(numships)]
-        self.shipfields = [(0,0) for i in range(numships)]
         self.gamewidth = boardwidth * squarewidth + (boardwidth-1)*separation
         self.gameheight = boardheight * squareheight + (boardheight-1)*separation
         self.left = (screenwidth - self.gamewidth)//2
@@ -165,11 +163,10 @@ class Board():
 
     def placeship(self,shipid,field,orientation):
         if self.isfieldonboard(field) and not self.isfieldonship(field) and not self.setupdone:
-            self.ships.append(Ship(shipid,field))
+            topleft = self.topleftposoffield(field,orientation)
+            self.ships.append(Ship(shipid,field,topleft,self.shipims[shipid]))
             self.buttons[shipid].hovercolour = self.buttons[shipid].clickedcolour
             self.buttons[shipid].hoverbordercolour = self.buttons[shipid].clickedbordercolour
-            self.shippos[shipid] = self.topleftposoffield(field,orientation)
-            self.shipfields[shipid] = field
             for (y,x) in field:
                 self.board[y,x] = len(self.ships)
             
@@ -191,14 +188,14 @@ class Board():
         hit = int(self.boardval(loc))
         self.board[y,x] = -1
         if hit > 0: #hit ship
-            self.ships[hit-1].hit(loc)
+            ship = self.ships[hit-1]
+            ship.hit(loc)
             self.setcolourhard([loc],self.hitcolour)
-            if self.ships[hit-1].sunk: #ship sunk
+            if ship.sunk: #ship sunk
                 self.shipsleft -= 1
-                self.setcolourhard(self.ships[hit-1].field,self.sunkcolour)
-                self.buttons[self.ships[hit-1].shipid].buttoncolour = self.sunkshipcolour
-                self.sunkshipids.append(hit-1)
-                for loc in self.shipfields[hit-1]:
+                self.setcolourhard(ship.field,self.sunkcolour)
+                self.buttons[ship.shipid].buttoncolour = self.sunkshipcolour
+                for loc in ship.field:
                     y,x = loc
                     self.squares[y][x].attacked = -1 #stop showing explosion to display ship instead
             else:
@@ -225,10 +222,8 @@ class Board():
         for button in self.buttons:
             button.render(screen,mousepos)
 
-        for shipid in self.sunkshipids:
-            shipim = self.shipims[shipid]
-            shiprect = shipim.get_rect(topleft = self.shippos[shipid])
-            screen.blit(shipim,shiprect)
+        for ship in self.ships:
+            ship.render(screen) #displays on screen if sunk
 
     def reset(self):
         self.board = np.zeros((self.boardheight,self.boardwidth),dtype = np.int8)
@@ -238,5 +233,12 @@ class Board():
         for row in self.squares:
             for square in row:
                 square.set_colour_hard(self.seacolour)
+                square.attacked = -1
+        for button in self.buttons:
+            button.buttoncolour = (0,0,0)
+            button.hovercolour = (150,150,170)
+            button.hoverbordercolour = (240,200,240)
+            button.clickedbordercolour = (240,200,240)
+        self.buttons[0].clicked = True
 
 
