@@ -11,11 +11,12 @@ class Button():
             text = "",
             font = None,
             im = None,
+            rounded = True,
             borderwidth = 2,
             fontcolour = (0,0,0),
             hovercolour = (180,180,200),
             buttoncolour = (150,150,170),
-            clickedcolour = (150,150,170),
+            clickedcolour = (180,180,200),
             bordercolour = (0,0,0),
             hoverbordercolour = (0,0,0),
             clickedbordercolour = (0,0,0)):
@@ -28,6 +29,7 @@ class Button():
         self.text = text
         self.font = font
         self.im = im
+        self.rounded = rounded
         self.borderwidth = borderwidth
         self.fontcolour = fontcolour
         self.hovercolour = hovercolour
@@ -45,9 +47,12 @@ class Button():
         return self.button.collidepoint(mousepos)
 
     def drawrect(self,screen,colour,bordercolour,l,t,w,h):
-        pygame.draw.rect(screen,colour,[l,t,w,h],0)
-        pygame.draw.rect(screen,bordercolour,[l,t,w,h],self.borderwidth)
-
+        if self.rounded:
+            pygame.draw.rect(screen,colour,[l,t,w,h],0,10)
+            pygame.draw.rect(screen,bordercolour,[l,t,w,h],self.borderwidth,10)
+        else:
+            pygame.draw.rect(screen,colour,[l,t,w,h],0)
+            pygame.draw.rect(screen,bordercolour,[l,t,w,h],self.borderwidth)
     def drawim(self,screen,l,t,w,h):
         if self.im is not None:
             imrect = self.im.get_rect(center = (l+w//2,t+h//2))

@@ -13,18 +13,26 @@ class Square(pygame.sprite.Sprite):
         self.surf.fill(self.colour)
         self.rect = self.surf.get_rect()
         self.attacked = -1
+        self.hovered = True
         dark = pygame.Surface((width,height)).convert_alpha() #to darken the water texture
         darkp = 0.5
         dark.fill((1,1,1,int(darkp*255)))
+        red = pygame.Surface((width,height)).convert_alpha()
+        redp = 0.0
+        red.fill((1,0,0,int(redp*255)))
         self.waterim, self.hitim, self.missim = ims
+        self.redim = self.waterim
         if self.waterim is not None:
             self.waterim = self.waterim.convert_alpha()
             self.waterim.blit(dark, (0,0),special_flags=pygame.BLEND_RGBA_SUB)
+            self.redim = self.redim.convert_alpha()
+            self.redim.blit(red,(0,0),special_flags = pygame.BLEND_RGBA_SUB)
         self.hitcrops = [(0+width*i,0,width,height) for i in range(12)]#l,t,w,h, 12 images
         self.misscrops = [(0+width*i,0,width,height) for i in range(4)]
 
     def set_colour(self,newcolour):
         self.surf.fill(newcolour)
+        self.hovered = True
 
     def set_colour_hard(self,newcolour):
         self.surf.fill(newcolour)
@@ -38,9 +46,13 @@ class Square(pygame.sprite.Sprite):
 
     def render(self,screen):
         if self.waterim is not None:
-            
             imrect = self.waterim.get_rect(topleft = self.pos)
+            #if self.hovered:
+            #    screen.blit(self.redim,imrect)
+            #else:
+            #    screen.blit(self.waterim,imrect)
             screen.blit(self.waterim,imrect)
+            self.hovered = False
         else:
             screen.blit(self.surf,self.pos)
         if self.attacked == 0:
