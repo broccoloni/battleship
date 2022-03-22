@@ -47,6 +47,7 @@ class Board():
         
         #internal variables
         self.board = np.zeros((boardheight,boardwidth),dtype = np.int8)
+        self.guesses = np.zeros((boardheight,boardwidth),dtype = np.int8)
         self.ships = []
         self.setupdone = False
         self.shipsleft = self.numships
@@ -73,6 +74,7 @@ class Board():
                                        hoverbordercolour = (240,200,240),
                                        clickedbordercolour = (240,200,240)))
         self.buttons[0].clicked = True
+
     def isonboard(self,pos):
         posx,posy = pos
         if posx < self.left:
@@ -188,6 +190,7 @@ class Board():
         hit = int(self.boardval(loc))
         self.board[y,x] = -1
         if hit > 0: #hit ship
+            self.guesses[y,x] = 2
             ship = self.ships[hit-1]
             ship.hit(loc)
             self.setcolourhard([loc],self.hitcolour)
@@ -198,11 +201,14 @@ class Board():
                 for loc in ship.field:
                     y,x = loc
                     self.squares[y][x].attacked = -1 #stop showing explosion to display ship instead
+                    self.guesses[y,x] = 3
             else:
                 if self.squareims is not None:
                     self.squares[y][x].attacked = 1
             return self.shipsleft,True
+
         elif hit == 0: #miss
+            self.guesses[y,x] = 1
             self.setcolourhard([loc],self.misscolour)
             if self.squareims is not None:
                 self.squares[y][x].attacked = 0

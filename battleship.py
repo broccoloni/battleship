@@ -4,6 +4,7 @@ from square import *
 from ship import *
 from board import *
 from button import *
+from player import *
 from copy import deepcopy
 import time
 
@@ -50,6 +51,7 @@ for i,im in enumerate(shipims):
 playerturn = 0 #0 - p1, 1 - p2
 opponenttype = 0 #0 - AI, 1 - Human
 opponentdifficulty = 1 #0 - random, 1 - matches user level, 2 - best play -> only applies for AI opponent
+player = None #AI player, if there is one
 hoverloc = (-1,-1)
 mousepos = (0,0)
 countdown = 5
@@ -324,6 +326,7 @@ while gameOn:
                         board.buttons[shipid].buttoncolour = (150,150,170)
                         board.buttons[shipid].clicked = False
                         curshiptoblit = None
+                        
                         #if all ships placed go to setup transition
                         if not shipids:
                             gamestate = 2
@@ -369,15 +372,14 @@ while gameOn:
                 gameOn = False
         
             if len(buttons) == 0:
-                leftcolwidth = board.left
                 bottomofboard = board.top+board.gameheight
-                separation = 10 #half of actual separation
-                bwidth = leftcolwidth//2.5
+                spacing = 15 #half of actual separation
+                bwidth = (board.left-3*spacing)//2
                 bheight = int(1.5*squareheight)
                 
                 #confirm setup button
                 buttons.append(Button(len(buttons),
-                               leftcolwidth//2-spacing-bwidth,
+                               spacing,
                                bottomofboard-bheight,
                                bwidth,
                                bheight,
@@ -386,7 +388,7 @@ while gameOn:
 
                 #reset setup button
                 buttons.append(Button(len(buttons),
-                               leftcolwidth//2+spacing,
+                               2*spacing+bwidth,
                                bottomofboard-bheight,
                                bwidth,
                                bheight,
@@ -395,7 +397,7 @@ while gameOn:
                 
                 #rate my setup button
                 buttons.append(Button(len(buttons),
-                               (leftcolwidth-bwidth*1.5)//2,
+                               (board.left-bwidth*1.5)//2,
                                board.top,
                                int(bwidth*1.5),
                                bheight,
@@ -406,24 +408,46 @@ while gameOn:
                 buttonid = -1
                 for num,button in enumerate(buttons):
                     if button.ison(mousepos):
-                        buttonid = num 
+                        buttonid = button.buttonid
 
                 #confirm ship placement
                 if buttonid == 0: 
-                    playerturn = (playerturn+1)%2
-                    if playerturn == 0: #both have placed their ships, go to game mode
+                    if opponenttype == 0:
+
+                        #create AI player
+                        player = Player(opponentdifficulty)
+                        
+                        #set up board
+                        board = boards[0]
+                        shipids = [0,1,2,3,4]
+                        while len(shipids)>0:
+                            shiplen = ships[shipids[0]]
+                            field,orientation = player.getshipplacement(board,shiplen)
+                            if board.placeship(shipids[0],field,orientation):
+                                shipids.pop(0)
+                        
+                        #begin game
                         gamestate = 3
-                    else: #go to setup state for other player
-                        gamestate = 1
+
+                    elif playertype == 1:
+                        playerturn = (playerturn+1)%2
+                        if playerturn == 0: #both have placed their ships, go to game mode
+                            gamestate = 3
+                        else: #go to setup state for other player
+                            gamestate = 1
+
+
                 #reset ships (keep playerturn constant)
                 elif buttonid == 1:
                     gamestate = 1
                     board.reset()
 
+                #user defending score
                 elif buttonid == 2:
                     print("Not implemented yet!")
                 
-                if buttonid == 0 or buttonid == 1: #if confirm or reset clicked, reset for setup
+                #if confirm or reset clicked, reset for setup
+                if buttonid == 0 or buttonid == 1:
                     shipids = [0,1,2,3,4]
                     ships = [5,4,3,3,2]
                     imstoblit = []
@@ -473,7 +497,7 @@ while gameOn:
                 bwidth = board.left//1.5
                 bheight = int(1.5*squareheight)
                 
-                #options button
+                #options button - id 0
                 buttons.append(Button(len(buttons),
                                spacing,
                                spacing,
@@ -482,7 +506,7 @@ while gameOn:
                                text = "Options",
                                font = smallfont))
 
-                #rate my setup button
+                #rate my setup button - id 1
                 buttons.append(Button(len(buttons),
                                spacing,
                                screenheight-bheight-spacing,
@@ -499,14 +523,17 @@ while gameOn:
                 buttonid = -1
                 for num,button in enumerate(buttons):
                     if button.ison(mousepos):
-                        buttonid = num 
+                        buttonid = button.buttonid
                 
                 #Options button
                 if buttonid == 0:
                     #show options dropdown
                     if len(buttons) == 2:
                         bwidth = board.left-2*spacing
-                        buttons.append(Button(len(buttons),
+                        bheight = int(1.5*squareheight)
+
+                        #ship probability distribution - id 2
+                        buttons.append(Button(2,
                                               spacing,
                                               spacing+bheight,
                                               bwidth,
@@ -514,7 +541,9 @@ while gameOn:
                                               text = "Ship Probability Distribution",
                                               font = smallfont,
                                               rounded = False))
-                        buttons.append(Button(len(buttons),
+
+                        #user attacking score
+                        buttons.append(Button(3,
                                               spacing,
                                               spacing+2*bheight,
                                               bwidth,
@@ -524,9 +553,53 @@ while gameOn:
                                               rounded = False))
                     #remove options dropdown
                     else:
-                        del buttons[2:]
+                        #have to delete buttons this way because of hint feedback + options menu
+                        #being able to pop up at different times, otherwise could do del buttons[2:]
+                        todel = []
+                        for i,button in enumerate(buttons):
+                            if button.buttonid == 2 or button.buttonid == 3:
+                                todel.append(i)
+                        for i in todel[::-1]: #have to go in reverse or else indices will get messed up
+                            del buttons[i]
+
                 #Hint button
                 elif buttonid == 1:
+                    spacing = 15
+                    bwidth = board.left - 2*spacing
+                    bheight = int(1.5*squareheight)
+                    
+                    #Requesting user feedback button - id 4
+                    buttons.append(Button(4,
+                                   spacing,
+                                   board.top+board.gameheight - 3*bheight,
+                                   bwidth,
+                                   bheight,
+                                   text = "Did you like this hint?",
+                                   font = smallfont))
+                    buttons[-1].hovercolour = buttons[-1].buttoncolour
+
+                    #positive feedback - id 5
+                    buttons.append(Button(5,
+                                   spacing,
+                                   board.top+board.gameheight-2*bheight,
+                                   bwidth,
+                                   bheight,
+                                   buttoncolour = (150,220,170),
+                                   hovercolour = (180,220,200),
+                                   text = "Yes, show more!",
+                                   font = smallfont))
+
+                    #negative feedback - id 6
+                    buttons.append(Button(6,
+                                   spacing,
+                                   board.top+board.gameheight-bheight,
+                                   bwidth,
+                                   bheight,
+                                   buttoncolour = (220,150,170),
+                                   hovercolour = (220,180,200),
+                                   text = "No, show less",
+                                   font = smallfont))
+                                    
                     print("Only Liam gets hints")
 
                 #Probability distribution button
@@ -537,6 +610,24 @@ while gameOn:
                 elif buttonid == 3:
                     print("Only Liam can see score of previous guess")
                 
+                #positive hint feedback (note id 4 is hint feedback question
+                elif buttonid == 5:
+                    print("Positive hint feedback!")
+
+                #negative hint feedback
+                elif buttonid == 6:
+                    print("Negative hint feedback")
+
+                if buttonid == 5 or buttonid == 6:
+                    #have to delete buttons this way because of hint feedback + options menu
+                    #being able to pop up at different times, otherwise could do del buttons[2:]
+                    todel = []
+                    for i,button in enumerate(buttons):
+                        if button.buttonid >= 4 and button.buttonid <= 6:
+                            todel.append(i)
+                    for i in todel[::-1]: #have to go in reverse or else indices will get messed up
+                        del buttons[i]
+
                 if board.isonboard(mousepos):
                     shipsleft,hit = board.attack(hoverloc)
                     if hit: #it's a hit
@@ -563,15 +654,28 @@ while gameOn:
         elif gamestate == 4: #player transition during gameplay (ie, only from gamestate 2, since it switches back to that)
             if event.type == KEYDOWN:
                 if event.key == K_BACKSPACE or event.key == K_ESCAPE:
-                        gameOn = False
+                    gameOn = False
                 elif event.type == QUIT:
                     gameOn = False
                 elif event.type == MOUSEMOTION:
                     mousepos = event.pos
+            if len(buttons) > 2:
+                del buttons[2:]
 
-            pygame.time.delay(5)                
+            delay = 5
+            pygame.time.delay(delay)                
             gamestate = 3
-            playerturn = (playerturn+1)%2
+
+            #AI opponent
+            if opponenttype == 0:
+                board = boards[1]
+                guess = player.guess(board.guesses)
+                board.attack(guess)
+                pygame.time.delay(delay)
+
+            #Human opponent
+            else:
+                playerturn = (playerturn+1)%2
 
         elif gamestate == 5: #player transition after game is won/lost
             if event.type == KEYDOWN:
