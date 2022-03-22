@@ -88,13 +88,16 @@ boards = [p1board,p2board]
 buttons = [] #each gamestate will store different buttons in here, which will get cleared when changing gamestates
 imstoblit = []
 curshiptoblit = None
+transitiontime = None
+clock = pygame.time.Clock()
+displaytext = ""
 
 #Game loop
 while gameOn:
-    for event in pygame.event.get():
-        #Start menu
-        if gamestate == 0:
-            #inputs
+    #Start menu
+    if gamestate == 0:
+        #inputs
+        for event in pygame.event.get():
             if event.type == KEYDOWN:
                 if event.key == K_BACKSPACE or event.key == K_ESCAPE:
                     gameOn = False
@@ -108,166 +111,168 @@ while gameOn:
 
             elif event.type == QUIT:
                 gameOn = False
-        
-            #start menu with buttons
-            if len(buttons) == 0:
-                menuwidth = screenwidth//2
-                menuheight = screenheight//2
-                spacing = 10 #actually half of the spacing based on implementation
-                bwidth = menuwidth//2.5
-                bheight = menuheight//5
+    
+        #start menu with buttons
+        if len(buttons) == 0:
+            menuwidth = screenwidth//2
+            menuheight = screenheight//2
+            spacing = 10 #actually half of the spacing based on implementation
+            bwidth = menuwidth//2.5
+            bheight = menuheight//5
+            
+            #menu backgound - id 0
+            buttons.append(Button(len(buttons),
+                           (screenwidth - menuwidth)//2,
+                           (screenheight - menuheight)//2,
+                           menuwidth,
+                           menuheight,
+                           rounded = False))
+            buttons[-1].hovercolour = buttons[-1].buttoncolour
+
+            #play button - id 1
+            buttons.append(Button(len(buttons),
+                           screenwidth//2-spacing-bwidth,
+                           int(screenheight//2-(spacing+bheight)*1.5),
+                           bwidth,
+                           bheight,
+                           text = "Play Battleship!",
+                           font = smallfont))
+
+            #quit button - id 2
+            buttons.append(Button(len(buttons),
+                           screenwidth//2+spacing,
+                           int(screenheight//2-(spacing+bheight)*1.5),
+                           bwidth,
+                           bheight,
+                           text = "Quit",
+                           font = smallfont))
+
+            #Opponent AI button - id 3
+            buttons.append(Button(len(buttons),
+                           screenwidth//2-spacing-bwidth,
+                           int(screenheight//2-(spacing+bheight)*0.5),
+                           bwidth,
+                           bheight,
+                           text = "AI Opponent",
+                           font = smallfont))
+            buttons[-1].clicked = True #default is to play an AI
+
+            #Opponent Human button - id 4 
+            buttons.append(Button(len(buttons),
+                           screenwidth//2+spacing,
+                           int(screenheight//2-(spacing+bheight)*0.5),
+                           bwidth,
+                           bheight,
+                           text = "Human Opponent",
+                           font = smallfont))
+            
+        #If AI player is selected and only 5 buttons, make AI difficulty buttons
+        if buttons[3].clicked and len(buttons) < 6: 
+            menuwidth = screenwidth//2
+            menuheight = screenheight//3
+            spacing = 10 #actually half of the spacing based on implementation
+            bwidth = menuwidth//10
+            bheight = menuheight//5
+
+            #text that says "AI difficulty:" - id 5
+            buttons.append(Button(len(buttons),
+                           screenwidth//2-spacing-menuwidth//2.5,
+                           int(screenheight//2-(spacing+bheight)*-1.5),
+                           menuwidth//2.5,
+                           bheight,
+                           text = "AI difficulty:",
+                           font = smallfont))
+            buttons[-1].hovercolour = buttons[-1].buttoncolour
+            buttons[-1].bordercolour = buttons[-1].buttoncolour
+            buttons[-1].hoverbordercolour = buttons[-1].buttoncolour
+
+            #difficulty 1 - id 6
+            buttons.append(Button(len(buttons),
+                           screenwidth//2+spacing,
+                           int(screenheight//2-(spacing+bheight)*-1.5),
+                           bwidth,
+                           bheight,
+                           text = "1",
+                           font = smallfont))
+            
+            #difficulty 2 - id 7
+            buttons.append(Button(len(buttons),
+                           screenwidth//2+bwidth+3*spacing,
+                           int(screenheight//2-(spacing+bheight)*-1.5),
+                           bwidth,
+                           bheight,
+                           text = "2",
+                           font = smallfont))
+            buttons[-1].clicked = True #medium AI as default
+
+            #difficulty 3 - id 8
+            buttons.append(Button(len(buttons),
+                           screenwidth//2+2*bwidth+5*spacing,
+                           int(screenheight//2-(spacing+bheight)*-1.5),
+                           bwidth,
+                           bheight,
+                           text = "3",
+                           font = smallfont))
+        if clicked:
+            buttonid = -1
+            for num,button in enumerate(buttons):
+                if button.ison(mousepos):
+                    buttonid = button.buttonid        
+            
+            #Start/Reset Game
+            if buttonid == 1: 
+                boards[0].reset()
+                boards[1].reset()
+                buttons = []
+                playerturn = 0 
+                hoverloc = (-1,-1)
+                mousepos = (0,0)
+                ships = [5,4,3,3,2]
+                curship = 0 
+                orientation = 0
+                field = []
+                prevfield = [] 
+                buttons = []
+                gamestate = 1
+                board = boards[0]
                 
-                #menu backgound - id 0
-                buttons.append(Button(len(buttons),
-                               (screenwidth - menuwidth)//2,
-                               (screenheight - menuheight)//2,
-                               menuwidth,
-                               menuheight,
-                               rounded = False))
-                buttons[-1].hovercolour = buttons[-1].buttoncolour
+            #Quit
+            elif buttonid == 2:
+                gameOn = False
 
-                #play button - id 1
-                buttons.append(Button(len(buttons),
-                               screenwidth//2-spacing-bwidth,
-                               int(screenheight//2-(spacing+bheight)*1.5),
-                               bwidth,
-                               bheight,
-                               text = "Play Battleship!",
-                               font = smallfont))
+            #AI Opponent
+            elif buttonid == 3:
+                opponenttype = 0
+                buttons[3].clicked = True
+                buttons[4].clicked = False
+                #NEED TO GENERATE DIFFICULTY OPTIONS
 
-                #quit button - id 2
-                buttons.append(Button(len(buttons),
-                               screenwidth//2+spacing,
-                               int(screenheight//2-(spacing+bheight)*1.5),
-                               bwidth,
-                               bheight,
-                               text = "Quit",
-                               font = smallfont))
-
-                #Opponent AI button - id 3
-                buttons.append(Button(len(buttons),
-                               screenwidth//2-spacing-bwidth,
-                               int(screenheight//2-(spacing+bheight)*0.5),
-                               bwidth,
-                               bheight,
-                               text = "AI Opponent",
-                               font = smallfont))
-                buttons[-1].clicked = True #default is to play an AI
-
-                #Opponent Human button - id 4 
-                buttons.append(Button(len(buttons),
-                               screenwidth//2+spacing,
-                               int(screenheight//2-(spacing+bheight)*0.5),
-                               bwidth,
-                               bheight,
-                               text = "Human Opponent",
-                               font = smallfont))
+            #Human Opponent
+            elif buttonid == 4:
+                opponenttype = 1
+                buttons[3].clicked = False
+                buttons[4].clicked = True
                 
-            #If AI player is selected and only 5 buttons, make AI difficulty buttons
-            if buttons[3].clicked and len(buttons) < 6: 
-                menuwidth = screenwidth//2
-                menuheight = screenheight//3
-                spacing = 10 #actually half of the spacing based on implementation
-                bwidth = menuwidth//10
-                bheight = menuheight//5
+                #remove AI difficulty options
+                del buttons[5:]
 
-                #text that says "AI difficulty:" - id 5
-                buttons.append(Button(len(buttons),
-                               screenwidth//2-spacing-menuwidth//2.5,
-                               int(screenheight//2-(spacing+bheight)*-1.5),
-                               menuwidth//2.5,
-                               bheight,
-                               text = "AI difficulty:",
-                               font = smallfont))
-                buttons[-1].hovercolour = buttons[-1].buttoncolour
-                buttons[-1].bordercolour = buttons[-1].buttoncolour
-                buttons[-1].hoverbordercolour = buttons[-1].buttoncolour
+            #AI difficulty (buttonid 5 is just text)
+            elif buttonid > 5:
+                opponentdifficulty = buttonid-6
+                for button in buttons[6:]:
+                    button.clicked = False
+                buttons[buttonid].clicked = True
 
-                #difficulty 1 - id 6
-                buttons.append(Button(len(buttons),
-                               screenwidth//2+spacing,
-                               int(screenheight//2-(spacing+bheight)*-1.5),
-                               bwidth,
-                               bheight,
-                               text = "1",
-                               font = smallfont))
-                
-                #difficulty 2 - id 7
-                buttons.append(Button(len(buttons),
-                               screenwidth//2+bwidth+3*spacing,
-                               int(screenheight//2-(spacing+bheight)*-1.5),
-                               bwidth,
-                               bheight,
-                               text = "2",
-                               font = smallfont))
-                buttons[-1].clicked = True #medium AI as default
+        clicked = False
 
-                #difficulty 3 - id 8
-                buttons.append(Button(len(buttons),
-                               screenwidth//2+2*bwidth+5*spacing,
-                               int(screenheight//2-(spacing+bheight)*-1.5),
-                               bwidth,
-                               bheight,
-                               text = "3",
-                               font = smallfont))
-            if clicked:
-                buttonid = -1
-                for num,button in enumerate(buttons):
-                    if button.ison(mousepos):
-                        buttonid = num        
-                
-                #Reset Game
-                if buttonid == 1: 
-                    boards[0].reset()
-                    boards[1].reset()
-                    buttons = []
-                    playerturn = 0 
-                    hoverloc = (-1,-1)
-                    mousepos = (0,0)
-                    ships = [5,4,3,3,2]
-                    curship = 0 
-                    orientation = 0
-                    field = []
-                    prevfield = [] 
-                    buttons = []
-                    gamestate = 1
+    #Game setup
+    elif gamestate == 1: 
+        #p1 sets up p2's board, p2 sets up p1's board
+        board = boards[(playerturn+1)%2]
+        displaytext = "Player "+str(playerturn+1)+" setup"
 
-                #Quit
-                elif buttonid == 2:
-                    gameOn = False
-
-                #AI Opponent
-                elif buttonid == 3:
-                    opponenttype = 0
-                    buttons[3].clicked = True
-                    buttons[4].clicked = False
-                    #NEED TO GENERATE DIFFICULTY OPTIONS
-
-                #Human Opponent
-                elif buttonid == 4:
-                    opponenttype = 1
-                    buttons[3].clicked = False
-                    buttons[4].clicked = True
-                    
-                    #remove AI difficulty options
-                    del buttons[5:]
-
-                #AI difficulty (buttonid 5 is just text)
-                elif buttonid > 5:
-                    opponentdifficulty = buttonid-6
-                    for button in buttons[6:]:
-                        button.clicked = False
-                    buttons[buttonid].clicked = True
-
-            clicked = False
-
-        #Game setup
-        elif gamestate == 1: 
-            #p1 sets up p2's board, p2 sets up p1's board
-            board = boards[(playerturn+1)%2]
-            displaytext = "Player "+str(playerturn+1)+" setup"
-
-            #inputs
+        #inputs
+        for event in pygame.event.get():
             if event.type == KEYDOWN:
                 if event.key == K_BACKSPACE or event.key == K_ESCAPE:
                     gameOn = False
@@ -292,7 +297,7 @@ while gameOn:
                 mousepos = event.pos
                 if board.isonboard(event.pos):
                     hoverloc = board.getsquare(event.pos)
-    
+
             elif event.type == MOUSEBUTTONUP:
                 if event.button == 1: #left click
                     clicked = True
@@ -304,59 +309,60 @@ while gameOn:
             elif event.type == QUIT:
                 gameOn = False
 
-            #set hovering ship field
-            board.resetcolour(prevfield)
-            prevfield = field
-            curships = [ships[shipid] for shipid in shipids]
-            field = board.makefield(curships[curship],hoverloc,orientation)
-            if board.isfieldonboard(field):
-                shipim = shipims[shipids[curship]]
-                shippos = board.topleftposoffield(field,orientation)
-                curshiptoblit = (shipim,shippos)
+        #set hovering ship field
+        board.resetcolour(prevfield)
+        prevfield = field
+        curships = [ships[shipid] for shipid in shipids]
+        field = board.makefield(curships[curship],hoverloc,orientation)
+        if board.isfieldonboard(field):
+            shipim = shipims[shipids[curship]]
+            shippos = board.topleftposoffield(field,orientation)
+            curshiptoblit = (shipim,shippos)
 
-            #when user clicks
-            if clicked:
-                if board.isonboard(mousepos):
-                    #place ship
-                    if board.placeship(shipids[curship],field,orientation):
-                        shipid = shipids.pop(curship)
-                        shipim = shipims[shipid]
-                        shippos = board.topleftposoffield(field,orientation)
-                        imstoblit.append((shipim,shippos))
-                        board.buttons[shipid].buttoncolour = (150,150,170)
-                        board.buttons[shipid].clicked = False
-                        curshiptoblit = None
-                        
-                        #if all ships placed go to setup transition
-                        if not shipids:
-                            gamestate = 2
+        #when user clicks
+        if clicked:
+            if board.isonboard(mousepos):
+                #place ship
+                if board.placeship(shipids[curship],field,orientation):
+                    shipid = shipids.pop(curship)
+                    shipim = shipims[shipid]
+                    shippos = board.topleftposoffield(field,orientation)
+                    imstoblit.append((shipim,shippos))
+                    board.buttons[shipid].buttoncolour = (150,150,170)
+                    board.buttons[shipid].clicked = False
+                    curshiptoblit = None
+                    
+                    #if all ships placed go to setup transition
+                    if not shipids:
+                        gamestate = 2
 
-                        #if there are some ships left
-                        else:
-                            curship = 0
-                            board.buttons[shipids[curship]].clicked = True
+                    #if there are some ships left
+                    else:
+                        curship = 0
+                        board.buttons[shipids[curship]].clicked = True
 
-                #if mouse is not on board
-                else:
-                    board.hovership(field)
-                    for button in board.buttons:
-                        #if mouse is on a ship button instead
-                        if button.ison(mousepos):
-                            shipid = button.buttonid
-                            #switch current ship to that ship if it hasn't been placed yet
-                            if shipid in shipids:
-                                board.buttons[shipids[curship]].clicked = False
-                                curship = shipids.index(shipid) 
-                                button.clicked = True
-
-            #if not clicked, hover
+            #if mouse is not on board
             else:
                 board.hovership(field)
+                for button in board.buttons:
+                    #if mouse is on a ship button instead
+                    if button.ison(mousepos):
+                        shipid = button.buttonid
+                        #switch current ship to that ship if it hasn't been placed yet
+                        if shipid in shipids:
+                            board.buttons[shipids[curship]].clicked = False
+                            curship = shipids.index(shipid) 
+                            button.clicked = True
 
-            clicked = False
-     
-        elif gamestate == 2: #player transition for setup state (ie. should only be used in gamestate 1)
-            #inputs
+        #if not clicked, hover
+        else:
+            board.hovership(field)
+
+        clicked = False
+ 
+    elif gamestate == 2: #player transition for setup state (ie. should only be used in gamestate 1)
+        #inputs
+        for event in pygame.event.get():
             if event.type == KEYDOWN:
                 if event.key == K_BACKSPACE or event.key == K_ESCAPE:
                     gameOn = False
@@ -370,111 +376,112 @@ while gameOn:
 
             elif event.type == QUIT:
                 gameOn = False
-        
-            if len(buttons) == 0:
-                bottomofboard = board.top+board.gameheight
-                spacing = 15 #half of actual separation
-                bwidth = (board.left-3*spacing)//2
-                bheight = int(1.5*squareheight)
-                
-                #confirm setup button
-                buttons.append(Button(len(buttons),
-                               spacing,
-                               bottomofboard-bheight,
-                               bwidth,
-                               bheight,
-                               text = "Confirm",
-                               font = smallfont))
+    
+        if len(buttons) == 0:
+            bottomofboard = board.top+board.gameheight
+            spacing = 15 #half of actual separation
+            bwidth = (board.left-3*spacing)//2
+            bheight = int(1.5*squareheight)
+            
+            #confirm setup button
+            buttons.append(Button(len(buttons),
+                           spacing,
+                           bottomofboard-bheight,
+                           bwidth,
+                           bheight,
+                           text = "Confirm",
+                           font = smallfont))
 
-                #reset setup button
-                buttons.append(Button(len(buttons),
-                               2*spacing+bwidth,
-                               bottomofboard-bheight,
-                               bwidth,
-                               bheight,
-                               text = "Reset",
-                               font = smallfont))
-                
-                #rate my setup button
-                buttons.append(Button(len(buttons),
-                               (board.left-bwidth*1.5)//2,
-                               board.top,
-                               int(bwidth*1.5),
-                               bheight,
-                               text = "Rate my setup!",
-                               font = smallfont))
+            #reset setup button
+            buttons.append(Button(len(buttons),
+                           2*spacing+bwidth,
+                           bottomofboard-bheight,
+                           bwidth,
+                           bheight,
+                           text = "Reset",
+                           font = smallfont))
+            
+            #rate my setup button
+            buttons.append(Button(len(buttons),
+                           (board.left-bwidth*1.5)//2,
+                           board.top,
+                           int(bwidth*1.5),
+                           bheight,
+                           text = "Rate my setup!",
+                           font = smallfont))
 
-            if clicked:
-                buttonid = -1
-                for num,button in enumerate(buttons):
-                    if button.ison(mousepos):
-                        buttonid = button.buttonid
+        if clicked:
+            buttonid = -1
+            for num,button in enumerate(buttons):
+                if button.ison(mousepos):
+                    buttonid = button.buttonid
 
-                #confirm ship placement
-                if buttonid == 0: 
-                    if opponenttype == 0:
+            #confirm ship placement
+            if buttonid == 0: 
+                if opponenttype == 0:
 
-                        #create AI player
-                        player = Player(opponentdifficulty)
-                        
-                        #set up board
-                        board = boards[0]
-                        shipids = [0,1,2,3,4]
-                        while len(shipids)>0:
-                            shiplen = ships[shipids[0]]
-                            field,orientation = player.getshipplacement(board,shiplen)
-                            if board.placeship(shipids[0],field,orientation):
-                                shipids.pop(0)
-                        
-                        #begin game
-                        gamestate = 3
-
-                    elif playertype == 1:
-                        playerturn = (playerturn+1)%2
-                        if playerturn == 0: #both have placed their ships, go to game mode
-                            gamestate = 3
-                        else: #go to setup state for other player
-                            gamestate = 1
-
-
-                #reset ships (keep playerturn constant)
-                elif buttonid == 1:
-                    gamestate = 1
-                    board.reset()
-
-                #user defending score
-                elif buttonid == 2:
-                    print("Not implemented yet!")
-                
-                #if confirm or reset clicked, reset for setup
-                if buttonid == 0 or buttonid == 1:
+                    #create AI player
+                    player = Player(opponentdifficulty)
+                    
+                    #set up board
+                    board = boards[0]
                     shipids = [0,1,2,3,4]
-                    ships = [5,4,3,3,2]
-                    imstoblit = []
-                    rotation = 0
-                    curship = 0
-                    hoverloc = (-1,-1)
-                    field = []
-                    if orientation == 1:
-                        rotation = -90
-                    elif orientation == 2:
-                        rotation = 180
-                    elif orientation == 3:
-                        rotation = 90
-                    for i,im in enumerate(shipims):
-                        shipims[i] = pygame.transform.rotate(im,rotation)
-                    orientation = 0
+                    while len(shipids)>0:
+                        shiplen = ships[shipids[0]]
+                        field,orientation = player.getshipplacement(board,shiplen)
+                        if board.placeship(shipids[0],field,orientation):
+                            shipids.pop(0)
+                    
+                    #begin game
+                    gamestate = 3
 
-                    #clear buttons
-                    buttons = []
+                elif playertype == 1:
+                    playerturn = (playerturn+1)%2
+                    if playerturn == 0: #both have placed their ships, go to game mode
+                        gamestate = 3
+                    else: #go to setup state for other player
+                        gamestate = 1
 
-            clicked = False
 
-        elif gamestate == 3: #playing battleship
-            board = boards[playerturn]
-            displaytext = "Player "+str(playerturn+1)+" turn:"
-        
-            #inputs
+            #reset ships (keep playerturn constant)
+            elif buttonid == 1:
+                gamestate = 1
+                board.reset()
+
+            #user defending score
+            elif buttonid == 2:
+                print("Not implemented yet!")
+            
+            #if confirm or reset clicked, reset for setup
+            if buttonid == 0 or buttonid == 1:
+                shipids = [0,1,2,3,4]
+                ships = [5,4,3,3,2]
+                imstoblit = []
+                rotation = 0
+                curship = 0
+                hoverloc = (-1,-1)
+                field = []
+                if orientation == 1:
+                    rotation = -90
+                elif orientation == 2:
+                    rotation = 180
+                elif orientation == 3:
+                    rotation = 90
+                for i,im in enumerate(shipims):
+                    shipims[i] = pygame.transform.rotate(im,rotation)
+                orientation = 0
+
+                #clear buttons
+                buttons = []
+
+        clicked = False
+
+    elif gamestate == 3: #playing battleship
+        board = boards[playerturn]
+        displaytext = "Player "+str(playerturn+1)+" turn:"
+    
+        #inputs
+        for event in pygame.event.get():
             if event.type == KEYDOWN:
                 if event.key == K_BACKSPACE or event.key == K_ESCAPE:
                     gameOn = False
@@ -491,167 +498,169 @@ while gameOn:
             elif event.type == QUIT:
                 gameOn = False
         
-            #buttons
-            spacing = 15
-            if len(buttons) == 0:
-                bwidth = board.left//1.5
-                bheight = int(1.5*squareheight)
-                
-                #options button - id 0
-                buttons.append(Button(len(buttons),
-                               spacing,
-                               spacing,
-                               bwidth,
-                               bheight,
-                               text = "Options",
-                               font = smallfont))
+        #buttons
+        spacing = 15
+        if len(buttons) == 0:
+            bwidth = board.left//1.5
+            bheight = int(1.5*squareheight)
+            
+            #options button - id 0
+            buttons.append(Button(len(buttons),
+                           spacing,
+                           spacing,
+                           bwidth,
+                           bheight,
+                           text = "Options",
+                           font = smallfont))
 
-                #rate my setup button - id 1
-                buttons.append(Button(len(buttons),
-                               spacing,
-                               screenheight-bheight-spacing,
-                               bwidth,
-                               bheight,
-                               text = "Hint",
-                               font = smallfont))
-                
+            #rate my setup button - id 1
+            buttons.append(Button(len(buttons),
+                           spacing,
+                           screenheight-bheight-spacing,
+                           bwidth,
+                           bheight,
+                           text = "Hint",
+                           font = smallfont))
+            
 
-            board.resetcolour(prevfield)
-            prevfield = [hoverloc]
+        board.resetcolour(prevfield)
+        prevfield = [hoverloc]
 
-            if clicked:
-                buttonid = -1
-                for num,button in enumerate(buttons):
-                    if button.ison(mousepos):
-                        buttonid = button.buttonid
-                
-                #Options button
-                if buttonid == 0:
-                    #show options dropdown
-                    if len(buttons) == 2:
-                        bwidth = board.left-2*spacing
-                        bheight = int(1.5*squareheight)
-
-                        #ship probability distribution - id 2
-                        buttons.append(Button(2,
-                                              spacing,
-                                              spacing+bheight,
-                                              bwidth,
-                                              bheight,
-                                              text = "Ship Probability Distribution",
-                                              font = smallfont,
-                                              rounded = False))
-
-                        #user attacking score
-                        buttons.append(Button(3,
-                                              spacing,
-                                              spacing+2*bheight,
-                                              bwidth,
-                                              bheight,
-                                              text = "Score Of Previous Guess",
-                                              font = smallfont,
-                                              rounded = False))
-                    #remove options dropdown
-                    else:
-                        #have to delete buttons this way because of hint feedback + options menu
-                        #being able to pop up at different times, otherwise could do del buttons[2:]
-                        todel = []
-                        for i,button in enumerate(buttons):
-                            if button.buttonid == 2 or button.buttonid == 3:
-                                todel.append(i)
-                        for i in todel[::-1]: #have to go in reverse or else indices will get messed up
-                            del buttons[i]
-
-                #Hint button
-                elif buttonid == 1:
-                    spacing = 15
-                    bwidth = board.left - 2*spacing
+        if clicked:
+            buttonid = -1
+            for num,button in enumerate(buttons):
+                if button.ison(mousepos):
+                    buttonid = button.buttonid
+            
+            #Options button
+            if buttonid == 0:
+                #show options dropdown
+                if len(buttons) == 2:
+                    bwidth = board.left-2*spacing
                     bheight = int(1.5*squareheight)
-                    
-                    #Requesting user feedback button - id 4
-                    buttons.append(Button(4,
-                                   spacing,
-                                   board.top+board.gameheight - 3*bheight,
-                                   bwidth,
-                                   bheight,
-                                   text = "Did you like this hint?",
-                                   font = smallfont))
-                    buttons[-1].hovercolour = buttons[-1].buttoncolour
 
-                    #positive feedback - id 5
-                    buttons.append(Button(5,
-                                   spacing,
-                                   board.top+board.gameheight-2*bheight,
-                                   bwidth,
-                                   bheight,
-                                   buttoncolour = (150,220,170),
-                                   hovercolour = (180,220,200),
-                                   text = "Yes, show more!",
-                                   font = smallfont))
+                    #ship probability distribution - id 2
+                    buttons.append(Button(2,
+                                          spacing,
+                                          spacing+bheight,
+                                          bwidth,
+                                          bheight,
+                                          text = "Ship Probability Distribution",
+                                          font = smallfont,
+                                          rounded = False))
 
-                    #negative feedback - id 6
-                    buttons.append(Button(6,
-                                   spacing,
-                                   board.top+board.gameheight-bheight,
-                                   bwidth,
-                                   bheight,
-                                   buttoncolour = (220,150,170),
-                                   hovercolour = (220,180,200),
-                                   text = "No, show less",
-                                   font = smallfont))
-                                    
-                    print("Only Liam gets hints")
-
-                #Probability distribution button
-                elif buttonid == 2:
-                    print("Only Liam can see probability distribution")
-
-                #Score of prev guess button
-                elif buttonid == 3:
-                    print("Only Liam can see score of previous guess")
-                
-                #positive hint feedback (note id 4 is hint feedback question
-                elif buttonid == 5:
-                    print("Positive hint feedback!")
-
-                #negative hint feedback
-                elif buttonid == 6:
-                    print("Negative hint feedback")
-
-                if buttonid == 5 or buttonid == 6:
+                    #user attacking score
+                    buttons.append(Button(3,
+                                          spacing,
+                                          spacing+2*bheight,
+                                          bwidth,
+                                          bheight,
+                                          text = "Score Of Previous Guess",
+                                          font = smallfont,
+                                          rounded = False))
+                #remove options dropdown
+                else:
                     #have to delete buttons this way because of hint feedback + options menu
                     #being able to pop up at different times, otherwise could do del buttons[2:]
                     todel = []
                     for i,button in enumerate(buttons):
-                        if button.buttonid >= 4 and button.buttonid <= 6:
+                        if button.buttonid == 2 or button.buttonid == 3:
                             todel.append(i)
                     for i in todel[::-1]: #have to go in reverse or else indices will get messed up
                         del buttons[i]
 
-                if board.isonboard(mousepos):
-                    shipsleft,hit = board.attack(hoverloc)
-                    if hit: #it's a hit
-                        displaytext+= " HIT!"
-                        if shipsleft > 0:
-                            gamestate = 4
+            #Hint button
+            elif buttonid == 1:
+                spacing = 15
+                bwidth = board.left - 2*spacing
+                bheight = int(1.5*squareheight)
+                
+                #Requesting user feedback button - id 4
+                buttons.append(Button(4,
+                               spacing,
+                               board.top+board.gameheight - 3*bheight,
+                               bwidth,
+                               bheight,
+                               text = "Did you like this hint?",
+                               font = smallfont))
+                buttons[-1].hovercolour = buttons[-1].buttoncolour
 
-                        elif shipsleft == 0: #game over
-                            displaytext = "Player "+str(playerturn+1)+" wins!" 
-                            gamestate = 5
+                #positive feedback - id 5
+                buttons.append(Button(5,
+                               spacing,
+                               board.top+board.gameheight-2*bheight,
+                               bwidth,
+                               bheight,
+                               buttoncolour = (150,220,170),
+                               hovercolour = (180,220,200),
+                               text = "Yes, show more!",
+                               font = smallfont))
 
+                #negative feedback - id 6
+                buttons.append(Button(6,
+                               spacing,
+                               board.top+board.gameheight-bheight,
+                               bwidth,
+                               bheight,
+                               buttoncolour = (220,150,170),
+                               hovercolour = (220,180,200),
+                               text = "No, show less",
+                               font = smallfont))
+                                
+                print("Only Liam gets hints")
+
+            #Probability distribution button
+            elif buttonid == 2:
+                print("Only Liam can see probability distribution")
+
+            #Score of prev guess button
+            elif buttonid == 3:
+                print("Only Liam can see score of previous guess")
+            
+            #positive hint feedback (note id 4 is hint feedback question
+            elif buttonid == 5:
+                print("Positive hint feedback!")
+
+            #negative hint feedback
+            elif buttonid == 6:
+                print("Negative hint feedback")
+
+            if buttonid == 5 or buttonid == 6:
+                #have to delete buttons this way because of hint feedback + options menu
+                #being able to pop up at different times, otherwise could do del buttons[2:]
+                todel = []
+                for i,button in enumerate(buttons):
+                    if button.buttonid >= 4 and button.buttonid <= 6:
+                        todel.append(i)
+                for i in todel[::-1]: #have to go in reverse or else indices will get messed up
+                    del buttons[i]
+
+            if board.isonboard(mousepos):
+                shipsleft,hit = board.attack(hoverloc)
+                if hit: #it's a hit
+                    displaytext+= " HIT!"
+                    if shipsleft > 0:
+                        gamestate = 4
+
+                    elif shipsleft == 0: #game over
+                        displaytext = "Player "+str(playerturn+1)+" wins!" 
+                        gamestate = 5
+
+                else: #it's a miss
+                    if shipsleft == -1: #if they attack where a sunk ship is - do nothing
+                        board.hovership([hoverloc])
                     else: #it's a miss
-                        if shipsleft == -1: #if they attack where a sunk ship is - do nothing
-                            board.hovership([hoverloc])
-                        else: #it's a miss
-                            displaytext += " miss :("
-                            gamestate = 4
+                        displaytext += " miss :("
+                        gamestate = 4
 
-            else:
-                board.hovership([hoverloc])
-        
-            clicked = False
-        
-        elif gamestate == 4: #player transition during gameplay (ie, only from gamestate 2, since it switches back to that)
+        else:
+            board.hovership([hoverloc])
+    
+        clicked = False
+    
+    elif gamestate == 4: #player transition during gameplay (ie, only from gamestate 2, since it switches back to that)
+        #Inputs
+        for event in pygame.event.get():
             if event.type == KEYDOWN:
                 if event.key == K_BACKSPACE or event.key == K_ESCAPE:
                     gameOn = False
@@ -659,25 +668,39 @@ while gameOn:
                     gameOn = False
                 elif event.type == MOUSEMOTION:
                     mousepos = event.pos
-            if len(buttons) > 2:
-                del buttons[2:]
+        
+        #remove all buttons other than options and hint
+        if len(buttons) > 2:
+            del buttons[2:]
 
-            delay = 5
-            pygame.time.delay(delay)                
-            gamestate = 3
+        if transitiontime is None:
+            transitiontime = pygame.time.get_ticks()
 
-            #AI opponent
-            if opponenttype == 0:
-                board = boards[1]
-                guess = player.guess(board.guesses)
-                board.attack(guess)
-                pygame.time.delay(delay)
-
-            #Human opponent
-            else:
+        else:
+            delay = 2000
+            timedif = pygame.time.get_ticks() - transitiontime
+            if timedif >= delay:
+                transitiontime = None
                 playerturn = (playerturn+1)%2
 
-        elif gamestate == 5: #player transition after game is won/lost
+                #AI opponent
+                if opponenttype == 0 and playerturn == 0:
+                    gamestate = 5
+
+                #Human opponent or after AI opponent has played
+                else:
+                    gamestate = 3
+
+    elif gamestate == 5: #AI players turn
+        displaytext = "AIs turn"
+        board = boards[playerturn]
+        guess = player.guess(board.guesses)
+        board.attack(guess)
+        gamestate = 4
+
+    elif gamestate == 6: #player transition after game is won/lost
+        #Inputs
+        for event in pygame.event.get():
             if event.type == KEYDOWN:
                 if event.key == K_BACKSPACE or event.key == K_ESCAPE:
                         gameOn = False
@@ -685,9 +708,16 @@ while gameOn:
                     gameOn = False
                 elif event.type == MOUSEMOTION:
                     mousepos = event.pos
-            pygame.time.delay(5)
-            gamestate = 0
-            
+        
+        if transitiontime is None:
+            transitiontime = pygame.time.get_ticks()
+
+        else:
+            delay = 2000
+            timedif = pygame.time.get_ticks() - transitiontime
+            if timedif >= delay:
+                gamestate = 0
+        
     if gamestate != 0:
         board.render(screen,displaytext,bigfont,mousepos)
     for button in buttons:
@@ -698,6 +728,7 @@ while gameOn:
         im,pos = curshiptoblit
         screen.blit(im,pos)
     pygame.display.flip()
+    clock.tick(60)
 
 
 
