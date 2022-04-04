@@ -418,10 +418,12 @@ while gameOn:
 
             #confirm ship placement
             if buttonid == 0: 
-                if opponenttype == 0:
+                if opponenttype == 0 and playerturn == 0:
 
                     #create AI player
-                    player = Player(opponentdifficulty)
+                    player = Player(opponentdifficulty,
+                                    boardwidth,
+                                    boardheight)
                     
                     #set up board
                     board = boards[0]
@@ -431,7 +433,7 @@ while gameOn:
                         field,orientation = player.getshipplacement(board,shiplen)
                         if board.placeship(shipids[0],field,orientation):
                             shipids.pop(0)
-                    
+
                     #begin game
                     gamestate = 3
 
@@ -636,29 +638,33 @@ while gameOn:
                     del buttons[i]
 
             if board.isonboard(mousepos):
-                shipsleft,hit = board.attack(hoverloc)
-                if hit: #it's a hit
+                retval, shipfield, shipsleft = board.attack(hoverloc)
+                #it's a hit
+                if retval > 0:
                     displaytext+= " HIT!"
                     if shipsleft > 0:
                         gamestate = 4
-
-                    elif shipsleft == 0: #game over
+                    
+                    #game over
+                    elif shipsleft == 0: 
                         displaytext = "Player "+str(playerturn+1)+" wins!" 
                         gamestate = 5
-
-                else: #it's a miss
-                    if shipsleft == -1: #if they attack where a sunk ship is - do nothing
-                        board.hovership([hoverloc])
-                    else: #it's a miss
-                        displaytext += " miss :("
-                        gamestate = 4
+                
+                #it's a miss
+                elif retval == 0: 
+                    displaytext += " Miss :("
+                    gamestate = 4
+                
+                #already attacked location
+                elif retval == -1:
+                    board.hovership([hoverloc])
 
         else:
             board.hovership([hoverloc])
     
         clicked = False
     
-    elif gamestate == 4: #player transition during gameplay (ie, only from gamestate 2, since it switches back to that)
+    elif gamestate == 4: #player transition during gameplay (ie, only from gamestate 3 and 5, since it switches back to that)
         #Inputs
         for event in pygame.event.get():
             if event.type == KEYDOWN:
@@ -677,11 +683,10 @@ while gameOn:
             transitiontime = pygame.time.get_ticks()
 
         else:
-            delay = 2000
+            delay = 1000
             timedif = pygame.time.get_ticks() - transitiontime
             if timedif >= delay:
                 transitiontime = None
-                playerturn = (playerturn+1)%2
 
                 #AI opponent
                 if opponenttype == 0 and playerturn == 0:
@@ -691,12 +696,20 @@ while gameOn:
                 else:
                     gamestate = 3
 
+                #update player turn
+                playerturn = (playerturn+1)%2
+
     elif gamestate == 5: #AI players turn
         displaytext = "AIs turn"
         board = boards[playerturn]
-        guess = player.guess(board.guesses)
-        board.attack(guess)
-        gamestate = 4
+        guess = player.guess()
+        retval, shipfield, shipsleft = board.attack(guess)
+        player.updaterevealed(retval,shipfield)
+        
+        if shipsleft == 0:
+            gamestate = 6
+        else:
+            gamestate = 4
 
     elif gamestate == 6: #player transition after game is won/lost
         #Inputs
@@ -709,11 +722,12 @@ while gameOn:
                 elif event.type == MOUSEMOTION:
                     mousepos = event.pos
         
+        displaytext = "Player",playerturn,"won!"
         if transitiontime is None:
             transitiontime = pygame.time.get_ticks()
 
         else:
-            delay = 2000
+            delay = 1000
             timedif = pygame.time.get_ticks() - transitiontime
             if timedif >= delay:
                 gamestate = 0

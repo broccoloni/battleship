@@ -47,7 +47,6 @@ class Board():
         
         #internal variables
         self.board = np.zeros((boardheight,boardwidth),dtype = np.int8)
-        self.guesses = np.zeros((boardheight,boardwidth),dtype = np.int8)
         self.ships = []
         self.setupdone = False
         self.shipsleft = self.numships
@@ -166,7 +165,7 @@ class Board():
     def placeship(self,shipid,field,orientation):
         if self.isfieldonboard(field) and not self.isfieldonship(field) and not self.setupdone:
             topleft = self.topleftposoffield(field,orientation)
-            self.ships.append(Ship(shipid,field,topleft,self.shipims[shipid]))
+            self.ships.append(Ship(shipid,field,topleft,self.shipims[shipid],orientation))
             self.buttons[shipid].hovercolour = self.buttons[shipid].clickedcolour
             self.buttons[shipid].hoverbordercolour = self.buttons[shipid].clickedbordercolour
             for (y,x) in field:
@@ -189,39 +188,45 @@ class Board():
         y,x = loc
         hit = int(self.boardval(loc))
         self.board[y,x] = -1
-        if hit > 0: #hit ship
-            self.guesses[y,x] = 2
+        shipfield = loc #returns full ship loc if ship is sunk
+        #hit a ship
+        if hit > 0:
+            retval = 1
             ship = self.ships[hit-1]
             ship.hit(loc)
             self.setcolourhard([loc],self.hitcolour)
-            if ship.sunk: #ship sunk
+            #if ship sunk
+            if ship.sunk:
                 self.shipsleft -= 1
                 self.setcolourhard(ship.field,self.sunkcolour)
                 self.buttons[ship.shipid].buttoncolour = self.sunkshipcolour
+                retval = 2
+                #stop showing explosion to display ship instead
                 for loc in ship.field:
                     y,x = loc
-                    self.squares[y][x].attacked = -1 #stop showing explosion to display ship instead
-                    self.guesses[y,x] = 3
+                    self.squares[y][x].attacked = -1
+            #if regular hit
             else:
                 if self.squareims is not None:
                     self.squares[y][x].attacked = 1
-            return self.shipsleft,True
-
-        elif hit == 0: #miss
-            self.guesses[y,x] = 1
+        #miss
+        elif hit == 0:
+            retval = 0
             self.setcolourhard([loc],self.misscolour)
             if self.squareims is not None:
                 self.squares[y][x].attacked = 0
-            return self.shipsleft,False
+        
+        #previous guess
         else:
-            return -1,False
+            retval = -1
+        return retval, shipfield, self.shipsleft
 
     def render(self,screen,text,font,mousepos):
         screen.fill((0,0,0))
         for x in range(self.boardwidth):
             for y in range(self.boardheight):
                 self.squares[y][x].render(screen)
-        text = font.render(text,True,self.textcolour,(0,0,0))
+        text = font.render(text,True,self.textcolour,(0,0,0)) 
         textrect = text.get_rect()
         textrect.center = (self.screenwidth // 2, self.top // 2) 
         screen.blit(text,textrect)
