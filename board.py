@@ -166,8 +166,10 @@ class Board():
         if self.isfieldonboard(field) and not self.isfieldonship(field) and not self.setupdone:
             topleft = self.topleftposoffield(field,orientation)
             self.ships.append(Ship(shipid,field,topleft,self.shipims[shipid],orientation))
+            self.buttons[shipid].buttoncolour = (150,150,170)
             self.buttons[shipid].hovercolour = self.buttons[shipid].clickedcolour
             self.buttons[shipid].hoverbordercolour = self.buttons[shipid].clickedbordercolour
+            self.buttons[shipid].clicked = False
             for (y,x) in field:
                 self.board[y,x] = len(self.ships)
             

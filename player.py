@@ -3,17 +3,20 @@ import matplotlib.pyplot as plt
 
 class Player():
     def __init__(self,
+            playerid,
             difficulty,
             boardwidth,
             boardheight,
             samplesize = 10000):
         
         #from inputs
+        self.playerid = playerid
         self.difficulty = difficulty
         self.difficulty = 1
         self.boardwidth = boardwidth
         self.boardheight = boardheight
         self.samplesize = samplesize
+        self.posterior = None
 
         #internal variable
         shipsizes = np.array([5,4,3,3,2])
@@ -22,6 +25,9 @@ class Player():
         self.allshipconfigs = [oneshipsampling(ship_configs) for ship_configs in self.shipconfigs]
         self.revealedships = np.ma.masked_all((len(self.shipconfigs),)+self.shipconfigs[0][0].shape)
         self.turn_revealed = []
+        self.updateposterior()
+        self.generateheatmap()
+        self.attacking_scores = []
 
     def getshipplacement(self,board,shiplen):
         #Random player
@@ -57,15 +63,33 @@ class Player():
             return (xs[ind],ys[ind])
 
         #Medium AI player
-        if self.difficulty == 1:
-            posterior = np.ma.masked_array(
-                        self.sample_posterior(), 
-                        mask = ~self._revealed().mask)
-            print("posterior\n", posterior)
-            return self.argmax_2d(posterior) #MAKE THIS FUNCTION FOOL
+        if self.difficulty > 0:
+            print("posterior\n", self.posterior)
+            return self.argmax_2d(self.posterior)
 
-    def plotheatmap(self,board):
-        pass
+    def updateposterior(self):
+        self.posterior = np.ma.masked_array(
+                         self.sample_posterior(), 
+                         mask = ~self._revealed().mask)
+
+    def generateheatmap(self):
+        params = {'ytick.color':'w',
+                  'xtick.color':'w',
+                  'axes.labelcolor':'w',
+                  'axes.edgecolor':'w'}
+
+        plt.rcParams.update(params)
+
+        fig,ax = plt.subplots(figsize = (4,4))
+        fig.patch.set_facecolor('black')
+        im = ax.imshow(self.posterior,cmap = 'hot',interpolation = 'nearest')
+        ax.set_xticks(range(10))
+        ax.set_yticks(range(10))
+        ax.set_xticklabels(range(1,11))
+        ax.set_yticklabels(['A','B','C','D','E','F','G','H','I','J'])
+        cbar = fig.colorbar(im,orientation = "horizontal",ticks = [self.posterior.min(),self.posterior.max()])
+        cbar.ax.set_xticklabels(['low','high'])
+        plt.savefig(f'./images/player{self.playerid}heatmap.png',bbox_inches = 'tight',dpi = 100)
 
     def argmax_2d(self,dist):
         maxx = dist.max(axis = 1).argmax()
@@ -149,6 +173,16 @@ class Player():
             self.revealedships[:,x,y] = 0
             if sunk is not None:
                 self.revealedships[sunk,x,y] = 1
+
+        #calculate guess score
+
+        guess_prob = self.posterior[x,y]
+        attacking_score = np.searchsorted(np.sort(self.posterior.flatten()),
+                                          guess_prob)/(self.posterior.count()-1)
+        self.attacking_scores.append(attacking_score)
+
+        self.updateposterior()
+        self.generateheatmap()
 
     #Some dynamic properties
     def _is_solved(self):

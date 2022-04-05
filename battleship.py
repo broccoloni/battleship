@@ -50,8 +50,10 @@ for i,im in enumerate(shipims):
 #need to be reset with new game
 playerturn = 0 #0 - p1, 1 - p2
 opponenttype = 0 #0 - AI, 1 - Human
-opponentdifficulty = 1 #0 - random, 1 - matches user level, 2 - best play -> only applies for AI opponent
-player = None #AI player, if there is one
+opponentdifficulty = 2 #0 - random, 1 - matches user level, 2 - best play -> only applies for AI opponent
+players = [Player(i,opponentdifficulty,
+                    boardwidth,
+                    boardheight) for i in range(2)]
 hoverloc = (-1,-1)
 mousepos = (0,0)
 countdown = 5
@@ -91,6 +93,12 @@ curshiptoblit = None
 transitiontime = None
 clock = pygame.time.Clock()
 displaytext = ""
+
+def loadheatmap(playerturn):
+    separation = 15
+    heatmap = pygame.image.load(f"images/player{playerturn}heatmap.png")
+    heatmap = pygame.transform.scale(heatmap,(boards[0].left - separation,boards[0].left-separation))
+    return heatmap
 
 #Game loop
 while gameOn:
@@ -327,9 +335,7 @@ while gameOn:
                     shipid = shipids.pop(curship)
                     shipim = shipims[shipid]
                     shippos = board.topleftposoffield(field,orientation)
-                    imstoblit.append((shipim,shippos))
-                    board.buttons[shipid].buttoncolour = (150,150,170)
-                    board.buttons[shipid].clicked = False
+                    imstoblit.append((shipid,shipim,shippos))
                     curshiptoblit = None
                     
                     #if all ships placed go to setup transition
@@ -418,30 +424,43 @@ while gameOn:
 
             #confirm ship placement
             if buttonid == 0: 
+                #AI opponent
                 if opponenttype == 0 and playerturn == 0:
-
-                    #create AI player
-                    player = Player(opponentdifficulty,
-                                    boardwidth,
-                                    boardheight)
+                    players[1].difficulty = opponentdifficulty 
                     
                     #set up board
                     board = boards[0]
                     shipids = [0,1,2,3,4]
                     while len(shipids)>0:
                         shiplen = ships[shipids[0]]
-                        field,orientation = player.getshipplacement(board,shiplen)
+                        field,orientation = players[1].getshipplacement(board,shiplen)
                         if board.placeship(shipids[0],field,orientation):
                             shipids.pop(0)
 
+                    #remove hovercolour change
+                    for board in boards:
+                        for button in board.buttons:
+                            button.hovercolour = button.buttoncolour
+                            button.hoverbordercolour = button.bordercolour
+                    
                     #begin game
                     gamestate = 3
 
                 elif playertype == 1:
                     playerturn = (playerturn+1)%2
-                    if playerturn == 0: #both have placed their ships, go to game mode
+                    #both have placed their ships, go to game mode
+                    if playerturn == 0:
+                        #remove hovercolour change
+                        for board in boards:
+                            for button in board.buttons:
+                                button.hovercolour = button.buttoncolour
+                                button.hoverbordercolour = button.bordercolour
+                        
+                        #begin game
                         gamestate = 3
-                    else: #go to setup state for other player
+                    
+                    #go to setup state for other player
+                    else:
                         gamestate = 1
 
 
@@ -515,7 +534,7 @@ while gameOn:
                            text = "Options",
                            font = smallfont))
 
-            #rate my setup button - id 1
+            #hint button - id 1
             buttons.append(Button(len(buttons),
                            spacing,
                            screenheight-bheight-spacing,
@@ -523,6 +542,109 @@ while gameOn:
                            bheight,
                            text = "Hint",
                            font = smallfont))
+            
+            bwidth = board.left-2*spacing
+            #ship probability distribution - id 2
+            buttons.append(Button(2,
+                                  spacing,
+                                  spacing+bheight,
+                                  bwidth,
+                                  bheight,
+                                  text = "Ship Probability Distribution",
+                                  font = smallfont,
+                                  rounded = False,
+                                  displayed = False))
+
+            #user attacking score - id 3
+            buttons.append(Button(3,
+                                  spacing,
+                                  spacing+2*bheight,
+                                  bwidth,
+                                  bheight,
+                                  text = "Score Of Previous Guess",
+                                  font = smallfont,
+                                  rounded = False,
+                                  displayed = False))
+            
+            #hint text - id 4
+            buttons.append(Button(4,
+                                  2*spacing + bwidth,
+                                  screenheight-bheight-spacing,
+                                  bwidth//3,
+                                  bheight,
+                                  font = smallfont,
+                                  fontcolour = (255,255,255),
+                                  hovercolour = (0,0,0),
+                                  buttoncolour = (0,0,0),
+                                  clickedcolour = (0,0,0),
+                                  bordercolour = (0,0,0),
+                                  hoverbordercolour = (0,0,0),
+                                  clickedbordercolour = (0,0,0),
+                                  displayed = False))
+
+            #Requesting user feedback button - id 5
+            buttons.append(Button(5,
+                           spacing,
+                           board.top+board.gameheight - 3*bheight,
+                           bwidth,
+                           bheight,
+                           text = "Did you like this hint?",
+                           font = smallfont,
+                           displayed = False))
+            buttons[-1].hovercolour = buttons[-1].buttoncolour
+
+            #positive feedback - id 6
+            buttons.append(Button(6,
+                           spacing,
+                           board.top+board.gameheight-2*bheight,
+                           bwidth,
+                           bheight,
+                           buttoncolour = (150,220,170),
+                           hovercolour = (180,220,200),
+                           text = "Yes, show more!",
+                           font = smallfont,
+                           displayed = False))
+
+            #negative feedback - id 7
+            buttons.append(Button(7,
+                           spacing,
+                           board.top+board.gameheight-bheight,
+                           bwidth,
+                           bheight,
+                           buttoncolour = (220,150,170),
+                           hovercolour = (220,180,200),
+                           text = "No, show less",
+                           font = smallfont,
+                           displayed = False))
+
+            #Attacking score bar background - id 8
+            buttons.append(Button(8,
+                           spacing,
+                           spacing + 3 * bheight,
+                           bwidth,
+                           bheight,
+                           font = smallfont,
+                           fontcolour = (255,255,255),
+                           buttoncolour = (0,0,0),
+                           hovercolour = (0,0,0),
+                           clickedcolour = (0,0,0),
+                           bordercolour = (255,255,255),
+                           hoverbordercolour = (255,255,255),
+                           clickedbordercolour = (255,255,255),
+                           displayed = False))
+            
+            #Attacking score - id 9
+            buttons.append(Button(9,
+                           spacing,
+                           spacing + 3 * bheight,
+                           bwidth,
+                           bheight,
+                           font = smallfont,
+                           fontcolour = (255,255,255),
+                           bordercolour = (0,0,0),
+                           hoverbordercolour = (0,0,0),
+                           clickedbordercolour = (0,0,0),
+                           displayed = False))
             
 
         board.resetcolour(prevfield)
@@ -534,113 +656,127 @@ while gameOn:
                 if button.ison(mousepos):
                     buttonid = button.buttonid
             
+            print("Number of buttons:",len(buttons),buttonid)
             #Options button
             if buttonid == 0:
                 #show options dropdown
-                if len(buttons) == 2:
-                    bwidth = board.left-2*spacing
-                    bheight = int(1.5*squareheight)
+                if not buttons[2].displayed:
+                    buttons[2].displayed = True
+                    buttons[3].displayed = True
 
-                    #ship probability distribution - id 2
-                    buttons.append(Button(2,
-                                          spacing,
-                                          spacing+bheight,
-                                          bwidth,
-                                          bheight,
-                                          text = "Ship Probability Distribution",
-                                          font = smallfont,
-                                          rounded = False))
-
-                    #user attacking score
-                    buttons.append(Button(3,
-                                          spacing,
-                                          spacing+2*bheight,
-                                          bwidth,
-                                          bheight,
-                                          text = "Score Of Previous Guess",
-                                          font = smallfont,
-                                          rounded = False))
                 #remove options dropdown
                 else:
-                    #have to delete buttons this way because of hint feedback + options menu
-                    #being able to pop up at different times, otherwise could do del buttons[2:]
-                    todel = []
-                    for i,button in enumerate(buttons):
-                        if button.buttonid == 2 or button.buttonid == 3:
-                            todel.append(i)
-                    for i in todel[::-1]: #have to go in reverse or else indices will get messed up
-                        del buttons[i]
+                    buttons[2].displayed = False
+                    buttons[3].displayed = False
 
             #Hint button
-            elif buttonid == 1:
-                spacing = 15
-                bwidth = board.left - 2*spacing
-                bheight = int(1.5*squareheight)
-                
-                #Requesting user feedback button - id 4
-                buttons.append(Button(4,
-                               spacing,
-                               board.top+board.gameheight - 3*bheight,
-                               bwidth,
-                               bheight,
-                               text = "Did you like this hint?",
-                               font = smallfont))
-                buttons[-1].hovercolour = buttons[-1].buttoncolour
+            elif buttonid == 1:     
+                #if not displayed, display it
+                if not buttons[4].displayed:
+                    x,y = players[playerturn].guess()
+                    letters = ['A','B','C','D','E','F','G','H','I','J']
+                    hinttext = f"Try {letters[y]}{x+1}!"
+                    buttons[4].text = hinttext
+                    buttons[4].displayed = True
+                    
+                    #get user feedback
+                    buttons[5].displayed = True
+                    buttons[6].displayed = True
+                    buttons[7].displayed = True
 
-                #positive feedback - id 5
-                buttons.append(Button(5,
-                               spacing,
-                               board.top+board.gameheight-2*bheight,
-                               bwidth,
-                               bheight,
-                               buttoncolour = (150,220,170),
-                               hovercolour = (180,220,200),
-                               text = "Yes, show more!",
-                               font = smallfont))
-
-                #negative feedback - id 6
-                buttons.append(Button(6,
-                               spacing,
-                               board.top+board.gameheight-bheight,
-                               bwidth,
-                               bheight,
-                               buttoncolour = (220,150,170),
-                               hovercolour = (220,180,200),
-                               text = "No, show less",
-                               font = smallfont))
+                #if displayed, stop showing it
+                else:
+                    buttons[4].displayed = False 
+                    buttons[5].displayed = False
+                    buttons[6].displayed = False
+                    buttons[7].displayed = False
+                #Get user feedback on hint 
                                 
-                print("Only Liam gets hints")
-
             #Probability distribution button
             elif buttonid == 2:
-                print("Only Liam can see probability distribution")
+                #imstoblit in this gamestate is only used for displaying the heatmap
+                #if it's not shown, show it
+                if imstoblit == []:
+                    #stop showing the attacking score
+                    buttons[8].displayed = False
+                    buttons[9].displayed = False
 
-            #Score of prev guess button
+                    heatmap = loadheatmap(playerturn)
+                    pos = (separation,(screenheight - board.left)//2)
+                    imstoblit.append((2,heatmap,pos))
+                
+                #if it is shown, stop showing it
+                else:
+                    imstoblit = []
+
+            #Attacking score button
             elif buttonid == 3:
-                print("Only Liam can see score of previous guess")
-            
-            #positive hint feedback (note id 4 is hint feedback question
-            elif buttonid == 5:
+                #if shown already, stop showing it
+                if buttons[8].displayed:
+                    buttons[8].displayed = False
+                    buttons[9].displayed = False
+
+                #if not shown, show the attacking score bar
+                else:
+                    #stop showing the heatmap
+                    imstoblit = []
+
+                    buttons[8].displayed = True
+                    buttons[9].displayed = True
+                    if len(players[playerturn].attacking_scores) > 0:
+                        score = players[playerturn].attacking_scores[-1]
+                        
+                        #linearly interpolate button colour from red to green
+                        r = int(255 * (1-score))
+                        g = int(255 * score)
+                        scorecolour = (r,g,0)
+                        buttons[9].buttoncolour = scorecolour
+                        buttons[9].hovercolour = scorecolour
+                        buttons[9].clickedcolour = scorecolour
+                        buttons[9].bordercolour = scorecolour
+                        buttons[9].hoverbordercolour = scorecolour
+                        buttons[9].clickedbordercolour = scorecolour
+                    
+                        #update text with current score
+                        buttons[9].text = f"{int(score*100)}%"
+                    
+                        #update progress bar length
+                        w = int(buttons[8].width * score)
+                        buttons[9].width = w
+
+                    else:
+                        colour = (0,0,0)
+                        buttons[9].buttoncolour = colour
+                        buttons[9].hovercolour = colour
+                        buttons[9].clickedcolour = colour
+                        buttons[9].bordercolour = colour
+                        buttons[9].hoverbordercolour = colour
+                        buttons[9].clickedbordercolour = colour
+                        buttons[9].text = "No Previous Attacks"
+
+            #id 4 is hint text
+
+            #id 5 is request for feedback
+
+            #positive hint feedback
+            elif buttonid == 6:
+                buttons[5].displayed = False
+                buttons[6].displayed = False
+                buttons[7].displayed = False
                 print("Positive hint feedback!")
 
             #negative hint feedback
-            elif buttonid == 6:
+            elif buttonid == 7:
+                buttons[5].displayed = False
+                buttons[6].displayed = False
+                buttons[7].displayed = False
                 print("Negative hint feedback")
-
-            if buttonid == 5 or buttonid == 6:
-                #have to delete buttons this way because of hint feedback + options menu
-                #being able to pop up at different times, otherwise could do del buttons[2:]
-                todel = []
-                for i,button in enumerate(buttons):
-                    if button.buttonid >= 4 and button.buttonid <= 6:
-                        todel.append(i)
-                for i in todel[::-1]: #have to go in reverse or else indices will get messed up
-                    del buttons[i]
 
             if board.isonboard(mousepos):
                 retval, shipfield, shipsleft = board.attack(hoverloc)
                 #it's a hit
                 if retval > 0:
+                    players[playerturn].updaterevealed(retval,shipfield)
                     displaytext+= " HIT!"
                     if shipsleft > 0:
                         gamestate = 4
@@ -652,6 +788,7 @@ while gameOn:
                 
                 #it's a miss
                 elif retval == 0: 
+                    players[playerturn].updaterevealed(retval,shipfield)
                     displaytext += " Miss :("
                     gamestate = 4
                 
@@ -674,10 +811,13 @@ while gameOn:
                     gameOn = False
                 elif event.type == MOUSEMOTION:
                     mousepos = event.pos
-        
-        #remove all buttons other than options and hint
-        if len(buttons) > 2:
-            del buttons[2:]
+
+        #stop showing the heatmap
+        imstoblit = []
+        #stop showing any buttons that aren't options and hint
+        for button in buttons:
+            if button.buttonid > 1:
+                button.displayed = False
 
         if transitiontime is None:
             transitiontime = pygame.time.get_ticks()
@@ -702,9 +842,9 @@ while gameOn:
     elif gamestate == 5: #AI players turn
         displaytext = "AIs turn"
         board = boards[playerturn]
-        guess = player.guess()
+        guess = players[playerturn].guess()
         retval, shipfield, shipsleft = board.attack(guess)
-        player.updaterevealed(retval,shipfield)
+        players[playerturn].updaterevealed(retval,shipfield)
         
         if shipsleft == 0:
             gamestate = 6
@@ -736,7 +876,7 @@ while gameOn:
         board.render(screen,displaytext,bigfont,mousepos)
     for button in buttons:
         button.render(screen,mousepos)
-    for im,pos in imstoblit:
+    for imid,im,pos in imstoblit:
         screen.blit(im,pos)
     if curshiptoblit is not None:
         im,pos = curshiptoblit

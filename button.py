@@ -12,6 +12,7 @@ class Button():
             font = None,
             im = None,
             rounded = True,
+            displayed = True,
             borderwidth = 2,
             fontcolour = (0,0,0),
             hovercolour = (180,180,200),
@@ -40,6 +41,7 @@ class Button():
         self.clickedbordercolour = clickedbordercolour
         self.button = pygame.Rect(left,top,width,height)
         self.clicked = False
+        self.displayed = displayed
         if self.font is None:
             self.font = pygame.font.SysFont("Ubuntu",30)
 
@@ -53,6 +55,7 @@ class Button():
         else:
             pygame.draw.rect(screen,colour,[l,t,w,h],0)
             pygame.draw.rect(screen,bordercolour,[l,t,w,h],self.borderwidth)
+    
     def drawim(self,screen,l,t,w,h):
         if self.im is not None:
             imrect = self.im.get_rect(center = (l+w//2,t+h//2))
@@ -65,18 +68,19 @@ class Button():
             screen.blit(text,textrect)
 
     def render(self,screen,mousepos):
-        if self.ison(mousepos):
-            self.drawrect(screen,self.hovercolour,self.hoverbordercolour,self.left,self.top,self.width,self.height)    
-            self.drawim(screen,self.left,self.top,self.width,self.height)
-            self.drawtext(screen,self.hovercolour,self.left,self.top,self.width,self.height)
-        elif self.clicked:
-            self.drawrect(screen,self.clickedcolour,self.clickedbordercolour,self.left,self.top,self.width,self.height)            
-            self.drawim(screen,self.left,self.top,self.width,self.height)
-            self.drawtext(screen,self.clickedcolour,self.left,self.top,self.width,self.height)
-        else:
-            self.drawrect(screen,self.buttoncolour,self.bordercolour,self.left,self.top,self.width,self.height)            
-            self.drawim(screen,self.left,self.top,self.width,self.height)
-            self.drawtext(screen,self.buttoncolour,self.left,self.top,self.width,self.height)
+        if self.displayed:
+            if self.ison(mousepos):
+                self.drawrect(screen,self.hovercolour,self.hoverbordercolour,self.left,self.top,self.width,self.height)    
+                self.drawim(screen,self.left,self.top,self.width,self.height)
+                self.drawtext(screen,self.hovercolour,self.left,self.top,self.width,self.height)
+            elif self.clicked:
+                self.drawrect(screen,self.clickedcolour,self.clickedbordercolour,self.left,self.top,self.width,self.height)            
+                self.drawim(screen,self.left,self.top,self.width,self.height)
+                self.drawtext(screen,self.clickedcolour,self.left,self.top,self.width,self.height)
+            else:
+                self.drawrect(screen,self.buttoncolour,self.bordercolour,self.left,self.top,self.width,self.height)            
+                self.drawim(screen,self.left,self.top,self.width,self.height)
+                self.drawtext(screen,self.buttoncolour,self.left,self.top,self.width,self.height)
         
         
 
