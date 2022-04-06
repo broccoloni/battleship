@@ -408,7 +408,7 @@ while gameOn:
     
     elif gamestate == 2: #ai evaluating the board state
         #create ai player to evaluate board state
-        aiplayer = Player(-1,
+        aiplayer = Player(2,
                           2,
                           boardwidth,
                           boardheight,
@@ -532,7 +532,7 @@ while gameOn:
                     gamestate = 4
 
                 #against human opponent
-                elif playertype == 1:
+                elif opponenttype == 1:
                     playerturn = (playerturn+1)%2
                     #both have placed their ships, go to game mode
                     if playerturn == 0:
