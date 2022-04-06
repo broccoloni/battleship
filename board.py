@@ -50,16 +50,46 @@ class Board():
         self.ships = []
         self.setupdone = False
         self.shipsleft = self.numships
-        self.gamewidth = boardwidth * squarewidth + (boardwidth-1)*separation
-        self.gameheight = boardheight * squareheight + (boardheight-1)*separation
+        self.gamewidth = self.boardwidth * squarewidth + (self.boardwidth-1)*separation
+        self.gameheight = self.boardheight * squareheight + (self.boardheight-1)*separation
         self.left = (screenwidth - self.gamewidth)//2
         self.top = (screenheight - self.gameheight)//2
-        self.squares = [[Square(squarewidth,squareheight,seacolour,ims = squareims) for i in range(boardwidth)] for j in range(boardheight)]
-        for x in range(boardwidth):
-            for y in range(boardheight):
+        self.squares = [[Square(squarewidth,squareheight,seacolour,ims = squareims) for i in range(self.boardwidth)] for j in range(self.boardheight)]
+        for x in range(self.boardwidth):
+            for y in range(self.boardheight):
                 posx = self.left + x * (squarewidth+separation)
                 posy = self.top + y * (squareheight+separation)
                 self.squares[y][x].setpos(posx,posy)
+
+        #set text for border of game
+        """
+        font = pygame.font.SysFont("Ubuntu",int(squarewidth * 3/4))
+        letters = ['A','B','C','D','E','F','G','H','I','J']
+        for y in range(self.boardheight-1):
+            pos = self.squares[y][0].pos
+            self.squares[y][0].__init__(squarewidth,
+                                       squareheight,
+                                       (0,0,0),
+                                       pos = pos,
+                                       text = letters[y],
+                                       font = font)
+        bottomleftsquarepos = self.squares[self.boardheight-1][0].pos
+        self.squares[self.boardheight-1][0].__init__(squarewidth,
+                                                     squareheight,
+                                                     colour = (0,0,0),
+                                                     text = " ",
+                                                     font = font,
+                                                     pos = bottomleftsquarepos)
+        for x in range(1,self.boardwidth):
+            pos = self.squares[self.boardwidth-1][x].pos
+            self.squares[self.boardwidth-1][x].__init__(squarewidth,
+                                                        squareheight,
+                                                        (0,0,0),
+                                                        pos = pos,
+                                                        text = str(x),
+                                                        font = font)
+        
+        """
         self.buttons = []
         for i,im in enumerate(shipims):
             self.buttons.append(Button(len(self.buttons),
@@ -243,8 +273,8 @@ class Board():
         self.ships = []
         self.setupdone = False
         self.shipsleft = self.numships
-        for row in self.squares:
-            for square in row:
+        for i,row in enumerate(self.squares):
+            for j,square in enumerate(row):
                 square.set_colour_hard(self.seacolour)
                 square.attacked = -1
         for button in self.buttons:

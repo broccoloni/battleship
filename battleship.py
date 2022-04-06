@@ -6,6 +6,7 @@ from board import *
 from button import *
 from player import *
 from copy import deepcopy
+import string
 import time
 
 pygame.init()
@@ -48,6 +49,7 @@ for i,im in enumerate(shipims):
     shipims[i] = pygame.transform.rotate(im,90)
 
 #need to be reset with new game
+hinttime = 10
 playerturn = 0 #0 - p1, 1 - p2
 opponenttype = 0 #0 - AI, 1 - Human
 opponentdifficulty = 2 #0 - random, 1 - matches user level, 2 - best play -> only applies for AI opponent
@@ -59,6 +61,7 @@ mousepos = (0,0)
 countdown = 5
 timeleft = deepcopy(countdown)
 clicked = False
+movestart = True
 shipids = [0,1,2,3,4]
 curship = 0 #index of ship
 orientation = 0 #0 - right, 1 - down, 2 - left, 3 - up
@@ -88,16 +91,52 @@ p2board = Board(boardwidth,
         numships=numships)
 boards = [p1board,p2board]
 buttons = [] #each gamestate will store different buttons in here, which will get cleared when changing gamestates
+labels = []
 imstoblit = []
 curshiptoblit = None
 transitiontime = None
 clock = pygame.time.Clock()
 displaytext = ""
 
+#board labels.. this should really be done in the board class but with short time I'm doing it here
+board = boards[0]
+letters = string.ascii_uppercase
+for i in range(boardheight):
+    labels.append(Button(i,
+                         board.left-board.squarewidth,
+                         board.top+i*(board.squareheight+board.separation),
+                         board.squarewidth,
+                         board.squareheight,
+                         text = letters[i],
+                         font = smallfont,
+                         fontcolour = (255,255,255),
+                         buttoncolour = (0,0,0),
+                         hovercolour = (0,0,0),
+                         clickedcolour = (0,0,0),
+                         bordercolour = (0,0,0),
+                         hoverbordercolour = (0,0,0),
+                         clickedbordercolour = (0,0,0)))
+
+for j in range(boardwidth):
+    labels.append(Button(boardheight+j,
+                         board.left+j*(board.squarewidth+board.separation),
+                         board.top+board.gameheight,
+                         board.squareheight,
+                         board.squarewidth,
+                         text = str(j+1),
+                         font = smallfont,
+                         fontcolour = (255,255,255),
+                         buttoncolour = (0,0,0),
+                         hovercolour = (0,0,0),
+                         clickedcolour = (0,0,0),
+                         bordercolour = (0,0,0),
+                         hoverbordercolour = (0,0,0),
+                         clickedbordercolour = (0,0,0))) 
+
 def loadheatmap(playerturn):
-    separation = 15
     heatmap = pygame.image.load(f"images/player{playerturn}heatmap.png")
-    heatmap = pygame.transform.scale(heatmap,(boards[0].left - separation,boards[0].left-separation))
+    heatmap = pygame.transform.scale(heatmap,(boards[0].left - boards[0].squarewidth,
+                                              boards[0].left - boards[0].squarewidth))
     return heatmap
 
 #Game loop
@@ -385,8 +424,8 @@ while gameOn:
     
         if len(buttons) == 0:
             bottomofboard = board.top+board.gameheight
-            spacing = 15 #half of actual separation
-            bwidth = (board.left-3*spacing)//2
+            spacing = 5 #half of actual separation
+            bwidth = (board.left - board.squarewidth - 3*spacing)//2
             bheight = int(1.5*squareheight)
             
             #confirm setup button
@@ -409,7 +448,7 @@ while gameOn:
             
             #rate my setup button
             buttons.append(Button(len(buttons),
-                           (board.left-bwidth*1.5)//2,
+                           (board.left - board.squarewidth - bwidth*1.5)//2,
                            board.top,
                            int(bwidth*1.5),
                            bheight,
@@ -443,9 +482,14 @@ while gameOn:
                             button.hovercolour = button.buttoncolour
                             button.hoverbordercolour = button.bordercolour
                     
+                    #load boards into ai players
+                    players[0].loadboard(boards[0].board)
+                    players[1].loadboard(boards[1].board)
+            
                     #begin game
                     gamestate = 3
 
+                #against human opponent
                 elif playertype == 1:
                     playerturn = (playerturn+1)%2
                     #both have placed their ships, go to game mode
@@ -456,6 +500,10 @@ while gameOn:
                                 button.hovercolour = button.buttoncolour
                                 button.hoverbordercolour = button.bordercolour
                         
+                        #load boards into ai players
+                        players[0].loadboard(boards[0].board)
+                        players[1].loadboard(boards[1].board)
+
                         #begin game
                         gamestate = 3
                     
@@ -472,6 +520,23 @@ while gameOn:
             #user defending score
             elif buttonid == 2:
                 print("Not implemented yet!")
+                aiplayer = Player(-1,
+                                  2,
+                                  boardwidth,
+                                  boardheight,
+                                  1000)
+
+                ships = [5,4,3,3,2]
+                nummoves = 0
+                while sum(ships) > 0:
+                    x,y = aiplayer.guess()
+                    retval = board.board[y,x]
+                    print(nummoves,sum(ships),retval)
+                    if retval != 0:
+                        ships[retval-1] -= 1
+                    aiplayer.updaterevealed(retval,(x,y))
+                    nummoves += 1
+                del aiplayer
             
             #if confirm or reset clicked, reset for setup
             if buttonid == 0 or buttonid == 1:
@@ -500,7 +565,14 @@ while gameOn:
     elif gamestate == 3: #playing battleship
         board = boards[playerturn]
         displaytext = "Player "+str(playerturn+1)+" turn:"
-    
+        
+        if movestart:
+            movestarttime = pygame.time.get_ticks()
+            movestart = False
+            hintshown = False
+            if hinttime > 15:
+                hintshown = True
+
         #inputs
         for event in pygame.event.get():
             if event.type == KEYDOWN:
@@ -520,9 +592,9 @@ while gameOn:
                 gameOn = False
         
         #buttons
-        spacing = 15
+        spacing = 8
         if len(buttons) == 0:
-            bwidth = board.left//1.5
+            bwidth = (board.left - board.squarewidth)//1.5
             bheight = int(1.5*squareheight)
             
             #options button - id 0
@@ -534,16 +606,21 @@ while gameOn:
                            text = "Options",
                            font = smallfont))
 
+            hinttext = f"Hint({hinttime})"
+            if hinttime > 15:
+                hinttext = "Hint"
+
             #hint button - id 1
             buttons.append(Button(len(buttons),
                            spacing,
                            screenheight-bheight-spacing,
                            bwidth,
                            bheight,
-                           text = "Hint",
+                           text = hinttext,
                            font = smallfont))
             
-            bwidth = board.left-2*spacing
+            bwidth = board.left-board.squarewidth
+            
             #ship probability distribution - id 2
             buttons.append(Button(2,
                                   spacing,
@@ -566,26 +643,28 @@ while gameOn:
                                   rounded = False,
                                   displayed = False))
             
+            bwidth = board.left-board.squarewidth - 2*spacing
+            
             #hint text - id 4
             buttons.append(Button(4,
-                                  2*spacing + bwidth,
-                                  screenheight-bheight-spacing,
-                                  bwidth//3,
+                                  spacing,
+                                  screenheight-2*(bheight+spacing),
+                                  bwidth,
                                   bheight,
                                   font = smallfont,
                                   fontcolour = (255,255,255),
                                   hovercolour = (0,0,0),
                                   buttoncolour = (0,0,0),
                                   clickedcolour = (0,0,0),
-                                  bordercolour = (0,0,0),
-                                  hoverbordercolour = (0,0,0),
-                                  clickedbordercolour = (0,0,0),
+                                  bordercolour = (255,255,255),
+                                  hoverbordercolour = (255,255,255),
+                                  clickedbordercolour = (255,255,255),
                                   displayed = False))
-
+            
             #Requesting user feedback button - id 5
             buttons.append(Button(5,
                            spacing,
-                           board.top+board.gameheight - 3*bheight,
+                           screenheight-5*(bheight+spacing),
                            bwidth,
                            bheight,
                            text = "Did you like this hint?",
@@ -596,7 +675,7 @@ while gameOn:
             #positive feedback - id 6
             buttons.append(Button(6,
                            spacing,
-                           board.top+board.gameheight-2*bheight,
+                           screenheight-4*(bheight+spacing),
                            bwidth,
                            bheight,
                            buttoncolour = (150,220,170),
@@ -608,7 +687,7 @@ while gameOn:
             #negative feedback - id 7
             buttons.append(Button(7,
                            spacing,
-                           board.top+board.gameheight-bheight,
+                           screenheight-3*(bheight+spacing),
                            bwidth,
                            bheight,
                            buttoncolour = (220,150,170),
@@ -641,11 +720,40 @@ while gameOn:
                            bheight,
                            font = smallfont,
                            fontcolour = (255,255,255),
-                           bordercolour = (0,0,0),
-                           hoverbordercolour = (0,0,0),
-                           clickedbordercolour = (0,0,0),
+                           bordercolour = (255,255,255),
+                           hoverbordercolour = (255,255,255),
+                           clickedbordercolour = (255,255,255),
                            displayed = False))
+
+        #If buttons already exist
+        elif not hintshown:
+            timeleft = hinttime - (pygame.time.get_ticks() - movestarttime)//1000
+            if timeleft < 0:
+                hintshown = True
+                buttons[1].text = "Hint"
+                
+                #show hint and request of feedback
+                buttons[4].displayed = True
+                buttons[5].displayed = True
+                buttons[6].displayed = True
+                buttons[7].displayed = True
+
+                #update hint content
+                row,col = players[playerturn].guess()
+                print(row,col)
+                print(players[playerturn].posterior,players[playerturn].posterior[row,col],players[playerturn].posterior[row,col])
+                letters = ['A','B','C','D','E','F','G','H','I','J']
+                hinttext = f"Try {letters[row]}{col+1}!"
+                buttons[4].text = hinttext
+                
+                #stop showing heatmap and user attacking score
+                imstoblit = []
+                buttons[8].displayed = False
+                buttons[9].displayed = False
             
+            else:
+                buttons[1].text = f"Hint ({timeleft})"
+
 
         board.resetcolour(prevfield)
         prevfield = [hoverloc]
@@ -656,7 +764,6 @@ while gameOn:
                 if button.ison(mousepos):
                     buttonid = button.buttonid
             
-            print("Number of buttons:",len(buttons),buttonid)
             #Options button
             if buttonid == 0:
                 #show options dropdown
@@ -671,8 +778,17 @@ while gameOn:
 
             #Hint button
             elif buttonid == 1:     
+                hintshown = True
+                buttons[1].text = "Hint"
+
                 #if not displayed, display it
                 if not buttons[4].displayed:
+                    #stop displaying heatmap and attacking score as they'll interfere with user feedback
+                    imstoblit = []
+                    buttons[8].displayed = False
+                    buttons[9].displayed = False
+
+                    #make the hint
                     x,y = players[playerturn].guess()
                     letters = ['A','B','C','D','E','F','G','H','I','J']
                     hinttext = f"Try {letters[y]}{x+1}!"
@@ -690,14 +806,16 @@ while gameOn:
                     buttons[5].displayed = False
                     buttons[6].displayed = False
                     buttons[7].displayed = False
-                #Get user feedback on hint 
                                 
             #Probability distribution button
-            elif buttonid == 2:
+            elif buttonid == 2 and buttons[2].displayed:
                 #imstoblit in this gamestate is only used for displaying the heatmap
                 #if it's not shown, show it
                 if imstoblit == []:
-                    #stop showing the attacking score
+                    #stop showing the attacking score and user feedback
+                    buttons[5].displayed = False
+                    buttons[6].displayed = False
+                    buttons[7].displayed = False
                     buttons[8].displayed = False
                     buttons[9].displayed = False
 
@@ -710,7 +828,7 @@ while gameOn:
                     imstoblit = []
 
             #Attacking score button
-            elif buttonid == 3:
+            elif buttonid == 3 and buttons[3].displayed:
                 #if shown already, stop showing it
                 if buttons[8].displayed:
                     buttons[8].displayed = False
@@ -718,8 +836,11 @@ while gameOn:
 
                 #if not shown, show the attacking score bar
                 else:
-                    #stop showing the heatmap
+                    #stop showing the heatmap and hint feedback
                     imstoblit = []
+                    buttons[5].displayed = False
+                    buttons[6].displayed = False
+                    buttons[7].displayed = False
 
                     buttons[8].displayed = True
                     buttons[9].displayed = True
@@ -759,17 +880,19 @@ while gameOn:
             #id 5 is request for feedback
 
             #positive hint feedback
-            elif buttonid == 6:
+            elif buttonid == 6 and buttons[6].displayed:
                 buttons[5].displayed = False
                 buttons[6].displayed = False
                 buttons[7].displayed = False
+                hinttime = max(3,hinttime-2)
                 print("Positive hint feedback!")
 
             #negative hint feedback
-            elif buttonid == 7:
+            elif buttonid == 7 and buttons[7].displayed:
                 buttons[5].displayed = False
                 buttons[6].displayed = False
                 buttons[7].displayed = False
+                hinttime = min(15,hinttime+2)
                 print("Negative hint feedback")
 
             if board.isonboard(mousepos):
@@ -835,6 +958,7 @@ while gameOn:
                 #Human opponent or after AI opponent has played
                 else:
                     gamestate = 3
+                    movestart = True
 
                 #update player turn
                 playerturn = (playerturn+1)%2
@@ -874,6 +998,8 @@ while gameOn:
         
     if gamestate != 0:
         board.render(screen,displaytext,bigfont,mousepos)
+        for label in labels:
+            label.render(screen,mousepos)
     for button in buttons:
         button.render(screen,mousepos)
     for imid,im,pos in imstoblit:

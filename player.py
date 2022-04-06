@@ -12,7 +12,6 @@ class Player():
         #from inputs
         self.playerid = playerid
         self.difficulty = difficulty
-        self.difficulty = 1
         self.boardwidth = boardwidth
         self.boardheight = boardheight
         self.samplesize = samplesize
@@ -20,14 +19,18 @@ class Player():
 
         #internal variable
         shipsizes = np.array([5,4,3,3,2])
+        self.ships = np.zeros((len(shipsizes),self.boardwidth,self.boardheight))
         self.shipconfigs = [self.get_all_ship_configs(shipsize) for shipsize in shipsizes]
-        self.ships = self.sample_ships(self.shipconfigs)[0]
         self.allshipconfigs = [oneshipsampling(ship_configs) for ship_configs in self.shipconfigs]
         self.revealedships = np.ma.masked_all((len(self.shipconfigs),)+self.shipconfigs[0][0].shape)
         self.turn_revealed = []
         self.updateposterior()
         self.generateheatmap()
         self.attacking_scores = []
+
+    def loadboard(self,board):
+        for i in range(len(self.ships)):
+            self.ships[i][board == i+1] = 1
 
     def getshipplacement(self,board,shiplen):
         #Random player
@@ -55,16 +58,28 @@ class Player():
 
     def guess(self):
         print("in guess")
-        print("revealed\n",self._revealed())
+        #print("revealed\n",self._revealed())
         #Random player
         if self.difficulty == 0:
             xs,ys = np.where(self._revealed())
             ind = np.random.randint(len(xs))
             return (xs[ind],ys[ind])
 
-        #Medium AI player
-        if self.difficulty > 0:
-            print("posterior\n", self.posterior)
+        #matches users play level
+        if self.difficulty == 1:
+            if len(self.attacking_scores) == 0:
+                return self.argmax_2d(self.posterior)
+            else:
+                avg_attack_score = np.mean(self.attacking_scores)
+                print("Avg attack score:",avg_attack_score)
+                scoreind = int(self.posterior.count() * avg_attack_score)
+                sortedflat = np.argsort(self.posterior.flatten())
+                ind = sortedflat[scoreind]
+                return np.unravel_index(ind,self.posterior.shape)
+
+        #Hard AI player - best probabilistic pla
+        if self.difficulty == 2:
+            #print("posterior\n", self.posterior)
             return self.argmax_2d(self.posterior)
 
     def updateposterior(self):
@@ -90,6 +105,7 @@ class Player():
         cbar = fig.colorbar(im,orientation = "horizontal",ticks = [self.posterior.min(),self.posterior.max()])
         cbar.ax.set_xticklabels(['low','high'])
         plt.savefig(f'./images/player{self.playerid}heatmap.png',bbox_inches = 'tight',dpi = 100)
+        plt.clf()
 
     def argmax_2d(self,dist):
         maxx = dist.max(axis = 1).argmax()
@@ -161,8 +177,10 @@ class Player():
         prev_sunk = self._sunk()
         next_ships = self._revealed_ships().copy()
         next_ships[:,x,y] = self.ships[:,x,y]
+        print("Ships hit",self.ships[:,x,y])
+        print("revealed",self._revealed_ships())
         self.turn_revealed.append(next_ships)
-
+        print("turn revealed",self.turn_revealed[-1])
         curr_sunk = self._sunk()
 
         if (curr_sunk == prev_sunk).all():

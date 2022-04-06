@@ -74,11 +74,11 @@ class Button():
                 self.drawim(screen,self.left,self.top,self.width,self.height)
                 self.drawtext(screen,self.hovercolour,self.left,self.top,self.width,self.height)
             elif self.clicked:
-                self.drawrect(screen,self.clickedcolour,self.clickedbordercolour,self.left,self.top,self.width,self.height)            
+                self.drawrect(screen,self.clickedcolour,self.clickedbordercolour,self.left,self.top,self.width,self.height)
                 self.drawim(screen,self.left,self.top,self.width,self.height)
                 self.drawtext(screen,self.clickedcolour,self.left,self.top,self.width,self.height)
             else:
-                self.drawrect(screen,self.buttoncolour,self.bordercolour,self.left,self.top,self.width,self.height)            
+                self.drawrect(screen,self.buttoncolour,self.bordercolour,self.left,self.top,self.width,self.height)
                 self.drawim(screen,self.left,self.top,self.width,self.height)
                 self.drawtext(screen,self.buttoncolour,self.left,self.top,self.width,self.height)
         

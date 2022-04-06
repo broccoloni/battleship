@@ -1,9 +1,8 @@
-
 import pygame
 from pygame.locals import *
 
 class Square(pygame.sprite.Sprite):
-    def __init__(self,width,height,colour = (0,200,255),pos = (0,0),ims = (None,None,None)):
+    def __init__(self,width,height,colour = (0,200,255),pos = (0,0),ims = (None,None,None),font = None,text = ""):
         super(Square, self).__init__()
         self.width = width
         self.height = height
@@ -14,6 +13,8 @@ class Square(pygame.sprite.Sprite):
         self.rect = self.surf.get_rect()
         self.attacked = -1
         self.hovered = True
+        self.font = font
+        self.text = text
         dark = pygame.Surface((width,height)).convert_alpha() #to darken the water texture
         darkp = 0.5
         dark.fill((1,1,1,int(darkp*255)))
@@ -44,6 +45,13 @@ class Square(pygame.sprite.Sprite):
     def setpos(self,x,y):
         self.pos = (x,y)
 
+    def drawtext(self,screen):
+        if self.text != "":
+            l,t = self.pos
+            text = self.font.render(self.text,True,(255,255,255),(0,0,0))
+            rect = text.get_rect(center = (l+self.width//2,t+self.height//2))
+            screen.blit(text,rect)
+
     def render(self,screen):
         if self.waterim is not None:
             imrect = self.waterim.get_rect(topleft = self.pos)
@@ -53,13 +61,16 @@ class Square(pygame.sprite.Sprite):
             #    screen.blit(self.waterim,imrect)
             screen.blit(self.waterim,imrect)
             self.hovered = False
+        elif self.font is not None:
+            self.drawtext(screen)
         else:
             screen.blit(self.surf,self.pos)
-        if self.attacked == 0:
-            if self.missim is not None:
-                screen.blit(self.missim,self.pos,self.misscrops[3])
-        elif self.attacked == 1:
-            if self.hitim is not None:
-                screen.blit(self.hitim,self.pos,self.hitcrops[4])
+        if self.font is None:
+            if self.attacked == 0:
+                if self.missim is not None:
+                    screen.blit(self.missim,self.pos,self.misscrops[3])
+            elif self.attacked == 1:
+                if self.hitim is not None:
+                    screen.blit(self.hitim,self.pos,self.hitcrops[4])
 
 
