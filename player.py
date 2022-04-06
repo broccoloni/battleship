@@ -30,7 +30,7 @@ class Player():
 
     def loadboard(self,board):
         for i in range(len(self.ships)):
-            self.ships[i][board == i+1] = 1
+            self.ships[len(self.ships) - i - 1][board == i+1] = 1
 
     def getshipplacement(self,board,shiplen):
         #Random player
@@ -56,8 +56,7 @@ class Player():
         if self.difficulty == 1:
             pass
 
-    def guess(self):
-        print("in guess")
+    def guess(self,attacking_scores = None):
         #print("revealed\n",self._revealed())
         #Random player
         if self.difficulty == 0:
@@ -67,15 +66,16 @@ class Player():
 
         #matches users play level
         if self.difficulty == 1:
-            if len(self.attacking_scores) == 0:
+            if len(attacking_scores) == 0 or attacking_scores is None:
                 return self.argmax_2d(self.posterior)
             else:
-                avg_attack_score = np.mean(self.attacking_scores)
+                avg_attack_score = np.mean(attacking_scores)
                 print("Avg attack score:",avg_attack_score)
                 scoreind = int(self.posterior.count() * avg_attack_score)
                 sortedflat = np.argsort(self.posterior.flatten())
                 ind = sortedflat[scoreind]
-                return np.unravel_index(ind,self.posterior.shape)
+                guess = np.unravel_index(ind,self.posterior.shape)
+                return guess
 
         #Hard AI player - best probabilistic pla
         if self.difficulty == 2:
@@ -88,6 +88,7 @@ class Player():
                          mask = ~self._revealed().mask)
 
     def generateheatmap(self):
+        plt.close('all')
         params = {'ytick.color':'w',
                   'xtick.color':'w',
                   'axes.labelcolor':'w',
@@ -97,7 +98,13 @@ class Player():
 
         fig,ax = plt.subplots(figsize = (4,4))
         fig.patch.set_facecolor('black')
-        im = ax.imshow(self.posterior,cmap = 'hot',interpolation = 'nearest')
+        #set hits and misses to max and min in heat map
+        heatmap = self.posterior.copy().filled(999)
+        fillvals = self.ships.sum(axis = 0)[self.posterior.mask]
+        fillvals[fillvals == 0] = self.posterior.min()
+        fillvals[fillvals == 1] = self.posterior.max()
+        heatmap[heatmap == 999] = fillvals
+        im = ax.imshow(heatmap,cmap = 'hot',interpolation = 'nearest')
         ax.set_xticks(range(10))
         ax.set_yticks(range(10))
         ax.set_xticklabels(range(1,11))
@@ -105,15 +112,13 @@ class Player():
         cbar = fig.colorbar(im,orientation = "horizontal",ticks = [self.posterior.min(),self.posterior.max()])
         cbar.ax.set_xticklabels(['low','high'])
         plt.savefig(f'./images/player{self.playerid}heatmap.png',bbox_inches = 'tight',dpi = 100)
-        plt.clf()
 
     def argmax_2d(self,dist):
-        maxx = dist.max(axis = 1).argmax()
-        maxy = dist[maxx].argmax()
-        return (maxx,maxy)
+        maxrow = dist.max(axis = 1).argmax()
+        maxcol = dist[maxrow].argmax()
+        return (maxrow,maxcol)
 
     def sample_posterior(self):
-        print("in sample posterior")
         all_compatible_configs = [
                 shipconfig.compatible_ships(seen_ships)
                 for (shipconfig, seen_ships) in zip(self.allshipconfigs, self.revealedships)]
@@ -122,14 +127,12 @@ class Player():
         return samples.sum(axis = 1).mean(axis = 0)
 
     def sample_n_ships(self,possible_ships,revealed):
-        print("sampling n configs")
         samples = []
         while len(samples) == 0:
             samples = self.get_samples(possible_ships,revealed)
         return samples
 
     def get_samples(self, possible_ships,revealed):
-        print("getting samples")
         randnumgen = np.random.default_rng()
         samples = np.stack([randnumgen.choice(ships,
                                              size = self.samplesize,
@@ -153,11 +156,9 @@ class Player():
         return np.array([x for _,x in zip(range(self.samplesize),generated_compatible_ships)])
 
     def validate_samples(self,samples, ship_axis = 1, board_axis = (-2,-1)):
-        print("validating samples")
         return (samples.sum(axis = ship_axis).max(axis = board_axis) == 1)
 
     def get_all_ship_configs(self, shipsize):
-        print("getting ship configs")
         configs1d = self.get_all_ship_configs_1d(shipsize)
         rows, _ = configs1d.shape
         y = np.arange(self.boardheight)
@@ -167,36 +168,30 @@ class Player():
         return np.concatenate((board_configs,board_configs.transpose(0,2,1)))
 
     def get_all_ship_configs_1d(self, shipsize):
-        print("getting 1d ship configs")
         x,y = np.indices((self.boardwidth,self.boardwidth))[:,:-shipsize+1]
         return 1 * (x <= y) & (y < x + shipsize)
 
     def updaterevealed(self,retval,field):
-        print("updating revealed")
-        x,y = field
+        row,col = field
         prev_sunk = self._sunk()
         next_ships = self._revealed_ships().copy()
-        next_ships[:,x,y] = self.ships[:,x,y]
-        print("Ships hit",self.ships[:,x,y])
-        print("revealed",self._revealed_ships())
+        next_ships[:,row,col] = self.ships[:,row,col]
         self.turn_revealed.append(next_ships)
-        print("turn revealed",self.turn_revealed[-1])
         curr_sunk = self._sunk()
 
         if (curr_sunk == prev_sunk).all():
             sunk = None
         else:
             sunk = (curr_sunk & ~prev_sunk).argmax() 
-        if self.ships.sum(axis = 0)[x,y] == 0 or sunk is not None:
-            self.revealedships[:,x,y] = 0
+        if self.ships.sum(axis = 0)[row,col] == 0 or sunk is not None:
+            self.revealedships[:,row,col] = 0
             if sunk is not None:
-                self.revealedships[sunk,x,y] = 1
+                self.revealedships[sunk,row,col] = 1
 
         #calculate guess score
-
-        guess_prob = self.posterior[x,y]
-        attacking_score = np.searchsorted(np.sort(self.posterior.flatten()),
-                                          guess_prob)/(self.posterior.count()-1)
+        guess_prob = self.posterior[row,col]
+        attacking_score = (np.searchsorted(np.sort(self.posterior[~self.posterior.mask].flatten()),
+                                          guess_prob))/(self.posterior.count()-1)
         self.attacking_scores.append(attacking_score)
 
         self.updateposterior()
@@ -231,7 +226,6 @@ class oneshipsampling():
         self.ship_configs = ship_configs
 
     def compatible_ships(self, revealed):
-        print("finding compatible ships in one ship sampling")
         if revealed.mask.all():
             return self.ship_configs
         else:

@@ -52,10 +52,11 @@ for i,im in enumerate(shipims):
 hinttime = 10
 playerturn = 0 #0 - p1, 1 - p2
 opponenttype = 0 #0 - AI, 1 - Human
-opponentdifficulty = 2 #0 - random, 1 - matches user level, 2 - best play -> only applies for AI opponent
+opponentdifficulty = 1 #0 - random, 1 - matches user level, 2 - best play -> only applies for AI opponent
 players = [Player(i,opponentdifficulty,
                     boardwidth,
                     boardheight) for i in range(2)]
+players[0].difficulty = 2 #set aiplayer of user to most difficult to provide best guesses
 hoverloc = (-1,-1)
 mousepos = (0,0)
 countdown = 5
@@ -379,7 +380,7 @@ while gameOn:
                     
                     #if all ships placed go to setup transition
                     if not shipids:
-                        gamestate = 2
+                        gamestate = 3
 
                     #if there are some ships left
                     else:
@@ -404,8 +405,35 @@ while gameOn:
             board.hovership(field)
 
         clicked = False
- 
-    elif gamestate == 2: #player transition for setup state (ie. should only be used in gamestate 1)
+    
+    elif gamestate == 2: #ai evaluating the board state
+        #create ai player to evaluate board state
+        aiplayer = Player(-1,
+                          2,
+                          boardwidth,
+                          boardheight,
+                          1000)
+
+        ships = [5,4,3,3,2]
+        nummoves = 0
+        aiplayer.loadboard(board.board)
+
+        #have ai play against board
+        while sum(ships) > 0:
+            print(nummoves)
+            print(aiplayer._revealed())
+            row,col = aiplayer.guess()
+            retval = board.board[row,col]
+            if retval != 0:
+                ships[retval-1] -= 1
+            aiplayer.updaterevealed(retval,(row,col))
+            nummoves += 1
+        
+        #delete ai player
+        del aiplayer
+        gamestate = 3
+
+    elif gamestate == 3: #player transition for setup state (ie. should only be used in gamestate 1)
         #inputs
         for event in pygame.event.get():
             if event.type == KEYDOWN:
@@ -428,7 +456,7 @@ while gameOn:
             bwidth = (board.left - board.squarewidth - 3*spacing)//2
             bheight = int(1.5*squareheight)
             
-            #confirm setup button
+            #confirm setup button - id 0
             buttons.append(Button(len(buttons),
                            spacing,
                            bottomofboard-bheight,
@@ -437,7 +465,7 @@ while gameOn:
                            text = "Confirm",
                            font = smallfont))
 
-            #reset setup button
+            #reset setup button - id 1
             buttons.append(Button(len(buttons),
                            2*spacing+bwidth,
                            bottomofboard-bheight,
@@ -446,7 +474,7 @@ while gameOn:
                            text = "Reset",
                            font = smallfont))
             
-            #rate my setup button
+            #rate my setup button - id 2
             buttons.append(Button(len(buttons),
                            (board.left - board.squarewidth - bwidth*1.5)//2,
                            board.top,
@@ -454,6 +482,20 @@ while gameOn:
                            bheight,
                            text = "Rate my setup!",
                            font = smallfont))
+
+            #calculating rate my setup button - id 3
+            buttons.append(Button(len(buttons),
+                           (board.left - board.squarewidth - bwidth*1.5)//2,
+                           board.top + bheight,
+                           int(bwidth*1.5),
+                           bheight,
+                           text = "Calculating...",
+                           font = smallfont,
+                           displayed = False))
+            buttons[-1].hovercolour = buttons[-1].buttoncolour
+            buttons[-1].clickedcolour = buttons[-1].buttoncolour
+            buttons[-1].hoverbordercolour = buttons[-1].bordercolour
+            buttons[-1].clickedbordercolour = buttons[-1].bordercolour
 
         if clicked:
             buttonid = -1
@@ -487,7 +529,7 @@ while gameOn:
                     players[1].loadboard(boards[1].board)
             
                     #begin game
-                    gamestate = 3
+                    gamestate = 4
 
                 #against human opponent
                 elif playertype == 1:
@@ -505,7 +547,7 @@ while gameOn:
                         players[1].loadboard(boards[1].board)
 
                         #begin game
-                        gamestate = 3
+                        gamestate = 4
                     
                     #go to setup state for other player
                     else:
@@ -519,25 +561,13 @@ while gameOn:
 
             #user defending score
             elif buttonid == 2:
-                print("Not implemented yet!")
-                aiplayer = Player(-1,
-                                  2,
-                                  boardwidth,
-                                  boardheight,
-                                  1000)
+                #go to ai player gamestate - I do it this was so I can display the 
+                #calculating button before it gets slow from the computation
+                gamestate = 2 
+                
+                #display calculating button
+                buttons[3].displayed = True
 
-                ships = [5,4,3,3,2]
-                nummoves = 0
-                while sum(ships) > 0:
-                    x,y = aiplayer.guess()
-                    retval = board.board[y,x]
-                    print(nummoves,sum(ships),retval)
-                    if retval != 0:
-                        ships[retval-1] -= 1
-                    aiplayer.updaterevealed(retval,(x,y))
-                    nummoves += 1
-                del aiplayer
-            
             #if confirm or reset clicked, reset for setup
             if buttonid == 0 or buttonid == 1:
                 shipids = [0,1,2,3,4]
@@ -562,7 +592,8 @@ while gameOn:
 
         clicked = False
 
-    elif gamestate == 3: #playing battleship
+
+    elif gamestate == 4: #playing battleship
         board = boards[playerturn]
         displaytext = "Player "+str(playerturn+1)+" turn:"
         
@@ -740,8 +771,6 @@ while gameOn:
 
                 #update hint content
                 row,col = players[playerturn].guess()
-                print(row,col)
-                print(players[playerturn].posterior,players[playerturn].posterior[row,col],players[playerturn].posterior[row,col])
                 letters = ['A','B','C','D','E','F','G','H','I','J']
                 hinttext = f"Try {letters[row]}{col+1}!"
                 buttons[4].text = hinttext
@@ -789,9 +818,9 @@ while gameOn:
                     buttons[9].displayed = False
 
                     #make the hint
-                    x,y = players[playerturn].guess()
+                    row,col = players[playerturn].guess()
                     letters = ['A','B','C','D','E','F','G','H','I','J']
-                    hinttext = f"Try {letters[y]}{x+1}!"
+                    hinttext = f"Try {letters[row]}{col+1}!"
                     buttons[4].text = hinttext
                     buttons[4].displayed = True
                     
@@ -848,9 +877,10 @@ while gameOn:
                         score = players[playerturn].attacking_scores[-1]
                         
                         #linearly interpolate button colour from red to green
-                        r = int(255 * (1-score))
-                        g = int(255 * score)
+                        r = max(0,int(255 * (1-score)))
+                        g = min(255,int(255 * score))
                         scorecolour = (r,g,0)
+                        print("attacking score colour:",scorecolour)
                         buttons[9].buttoncolour = scorecolour
                         buttons[9].hovercolour = scorecolour
                         buttons[9].clickedcolour = scorecolour
@@ -902,18 +932,18 @@ while gameOn:
                     players[playerturn].updaterevealed(retval,shipfield)
                     displaytext+= " HIT!"
                     if shipsleft > 0:
-                        gamestate = 4
+                        gamestate = 5
                     
                     #game over
                     elif shipsleft == 0: 
                         displaytext = "Player "+str(playerturn+1)+" wins!" 
-                        gamestate = 5
+                        gamestate = 7
                 
                 #it's a miss
                 elif retval == 0: 
                     players[playerturn].updaterevealed(retval,shipfield)
                     displaytext += " Miss :("
-                    gamestate = 4
+                    gamestate = 5
                 
                 #already attacked location
                 elif retval == -1:
@@ -924,7 +954,7 @@ while gameOn:
     
         clicked = False
     
-    elif gamestate == 4: #player transition during gameplay (ie, only from gamestate 3 and 5, since it switches back to that)
+    elif gamestate == 5: #player transition during gameplay (ie, only from gamestate 3 and 5, since it switches back to that)
         #Inputs
         for event in pygame.event.get():
             if event.type == KEYDOWN:
@@ -953,29 +983,29 @@ while gameOn:
 
                 #AI opponent
                 if opponenttype == 0 and playerturn == 0:
-                    gamestate = 5
+                    gamestate = 6
 
                 #Human opponent or after AI opponent has played
                 else:
-                    gamestate = 3
+                    gamestate = 4
                     movestart = True
 
                 #update player turn
                 playerturn = (playerturn+1)%2
 
-    elif gamestate == 5: #AI players turn
+    elif gamestate == 6: #AI players turn
         displaytext = "AIs turn"
         board = boards[playerturn]
-        guess = players[playerturn].guess()
-        retval, shipfield, shipsleft = board.attack(guess)
+        row,col = players[playerturn].guess(players[0].attacking_scores)
+        retval, shipfield, shipsleft = board.attack((row,col))
         players[playerturn].updaterevealed(retval,shipfield)
         
         if shipsleft == 0:
-            gamestate = 6
+            gamestate = 7
         else:
-            gamestate = 4
+            gamestate = 5
 
-    elif gamestate == 6: #player transition after game is won/lost
+    elif gamestate == 7: #player transition after game is won/lost
         #Inputs
         for event in pygame.event.get():
             if event.type == KEYDOWN:
@@ -986,7 +1016,7 @@ while gameOn:
                 elif event.type == MOUSEMOTION:
                     mousepos = event.pos
         
-        displaytext = "Player",playerturn,"won!"
+        displaytext = f"Player {playerturn} won!"
         if transitiontime is None:
             transitiontime = pygame.time.get_ticks()
 
@@ -994,6 +1024,7 @@ while gameOn:
             delay = 1000
             timedif = pygame.time.get_ticks() - transitiontime
             if timedif >= delay:
+                transitiontime = None
                 gamestate = 0
         
     if gamestate != 0:

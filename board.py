@@ -258,10 +258,10 @@ class Board():
         for x in range(self.boardwidth):
             for y in range(self.boardheight):
                 self.squares[y][x].render(screen)
-        text = font.render(text,True,self.textcolour,(0,0,0)) 
-        textrect = text.get_rect()
+        rtext = font.render(text,True,self.textcolour,(0,0,0)) 
+        textrect = rtext.get_rect()
         textrect.center = (self.screenwidth // 2, self.top // 2) 
-        screen.blit(text,textrect)
+        screen.blit(rtext,textrect)
         for button in self.buttons:
             button.render(screen,mousepos)
 
