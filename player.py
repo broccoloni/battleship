@@ -71,7 +71,7 @@ class Player():
             else:
                 avg_attack_score = np.mean(attacking_scores)
                 print("Avg attack score:",avg_attack_score)
-                scoreind = int(self.posterior.count() * avg_attack_score)
+                scoreind = int((self.posterior.count()-1) * avg_attack_score)
                 sortedflat = np.argsort(self.posterior.flatten())
                 ind = sortedflat[scoreind]
                 guess = np.unravel_index(ind,self.posterior.shape)
