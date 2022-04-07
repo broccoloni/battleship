@@ -17,8 +17,8 @@ numships = 5
 ships = [5,4,3,3,2]
 boardwidth = 10
 boardheight = 10
-screenwidth = 900
-screenheight = 600
+screenwidth = 1600
+screenheight = 900
 squarewidth = screenwidth//80*3
 squareheight = squarewidth
 separation = 3
@@ -411,8 +411,7 @@ while gameOn:
         aiplayer = Player(2,
                           2,
                           boardwidth,
-                          boardheight,
-                          1000)
+                          boardheight)
 
         ships = [5,4,3,3,2]
         nummoves = 0
@@ -426,7 +425,7 @@ while gameOn:
             retval = board.board[row,col]
             if retval != 0:
                 ships[retval-1] -= 1
-            aiplayer.updaterevealed(retval,(row,col))
+            aiplayer.updaterevealed(retval,(row,col),make_heatmap = False)
             nummoves += 1
         
         #delete ai player
@@ -512,11 +511,13 @@ while gameOn:
                     #set up board
                     board = boards[0]
                     shipids = [0,1,2,3,4]
+                    count = 0
                     while len(shipids)>0:
                         shiplen = ships[shipids[0]]
-                        field,orientation = players[1].getshipplacement(board,shiplen)
+                        field,orientation = players[1].getshipplacement(board,shiplen,seed = count)
                         if board.placeship(shipids[0],field,orientation):
                             shipids.pop(0)
+                        count += 1
 
                     #remove hovercolour change
                     for board in boards:

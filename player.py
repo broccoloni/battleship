@@ -7,7 +7,7 @@ class Player():
             difficulty,
             boardwidth,
             boardheight,
-            samplesize = 10000):
+            samplesize = 20000):
         
         #from inputs
         self.playerid = playerid
@@ -30,9 +30,10 @@ class Player():
 
     def loadboard(self,board):
         for i in range(len(self.ships)):
-            self.ships[len(self.ships) - i - 1][board == i+1] = 1
+            self.ships[i][board == i+1] = 1
 
-    def getshipplacement(self,board,shiplen):
+    def getshipplacement(self,board,shiplen,seed = 0):
+        np.random.seed(seed)
         #Random player
         if self.difficulty >= 0:
             orientation = np.random.randint(4)
@@ -124,6 +125,7 @@ class Player():
                 for (shipconfig, seen_ships) in zip(self.allshipconfigs, self.revealedships)]
         
         samples = self.sample_n_ships(all_compatible_configs,self._revealed())
+        #samples = self.sample_compatible_ships(all_compatible_configs,self._revealed())
         return samples.sum(axis = 1).mean(axis = 0)
 
     def sample_n_ships(self,possible_ships,revealed):
@@ -134,6 +136,7 @@ class Player():
 
     def get_samples(self, possible_ships,revealed):
         randnumgen = np.random.default_rng()
+        print([ships.shape for ships in possible_ships])
         samples = np.stack([randnumgen.choice(ships,
                                              size = self.samplesize,
                                              shuffle = False)
@@ -152,7 +155,10 @@ class Player():
 
     def sample_ships(self,possible_ships):
         empty = np.ma.masked_all_like(self.shipconfigs[0][0])
-        generated_compatible_ships = self.generate_compatible_ships(possible_ships,empty)
+        return self.sample_compatible_ships(possible_ships,empty)
+    
+    def sample_compatible_ships(self,possible_ships,revealed):
+        generated_compatible_ships = self.generate_compatible_ships(possible_ships,revealed)
         return np.array([x for _,x in zip(range(self.samplesize),generated_compatible_ships)])
 
     def validate_samples(self,samples, ship_axis = 1, board_axis = (-2,-1)):
@@ -171,7 +177,7 @@ class Player():
         x,y = np.indices((self.boardwidth,self.boardwidth))[:,:-shipsize+1]
         return 1 * (x <= y) & (y < x + shipsize)
 
-    def updaterevealed(self,retval,field):
+    def updaterevealed(self,retval,field,make_heatmap = True):
         row,col = field
         prev_sunk = self._sunk()
         next_ships = self._revealed_ships().copy()
@@ -188,6 +194,11 @@ class Player():
             if sunk is not None:
                 self.revealedships[sunk,row,col] = 1
 
+        print("revealedships",self.revealedships)
+        print("revealed",self._revealed())
+        print("sunk",self._sunk())
+        print("_revealed_ships",self._revealed_ships())
+
         #calculate guess score
         guess_prob = self.posterior[row,col]
         attacking_score = (np.searchsorted(np.sort(self.posterior[~self.posterior.mask].flatten()),
@@ -195,7 +206,8 @@ class Player():
         self.attacking_scores.append(attacking_score)
 
         self.updateposterior()
-        self.generateheatmap()
+        if make_heatmap:
+            self.generateheatmap()
 
     #Some dynamic properties
     def _is_solved(self):
