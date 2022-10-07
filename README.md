@@ -25,3 +25,6 @@ and they guess the locations of yours. You can also get hints from the AI if
 you'd like, it doesn't use the true locations of the enemy ships, but a 
 probabilistic model instead. The video below shows an example of starting 
 the game, and using some of the features. 
+
+Note: the mouse being flipped is a feature of the screen recording and does not actually happen in the game
+[Screen recording 2022-10-06 2.43.09 PM.webm](https://user-images.githubusercontent.com/38572823/194654172-95943be2-4f8b-4175-a8dd-4c0b1881ff8d.webm)
